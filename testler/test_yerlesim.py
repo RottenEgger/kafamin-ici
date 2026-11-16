@@ -89,6 +89,27 @@ class YerlesimTesti(unittest.TestCase):
             yol.write_text("bozuk{", encoding="utf-8")
             self.assertEqual(yerlesim.alan_tablosu_oku(yol), {})
 
+    def test_bos_yer_baska_alan_cikinca_kaymaz(self):
+        tablo = {"Sağlık": (*yerlesim.BOS_YERLER[0], yerlesim.BOS_RENKLER[0])}
+        m = yerlesim.alan_merkezleri(["Aile", "Sağlık"], tablo)
+        self.assertEqual(m["Sağlık"][:3], yerlesim.BOS_YERLER[0])
+        self.assertEqual(m["Aile"], (*yerlesim.BOS_YERLER[1], yerlesim.BOS_RENKLER[1]))
+
+    def test_desen_baska_yildizin_ustune_binmez(self):
+        # p02 ile p16'nın orta noktası, uye olmayan p15'e ~1 birim yakın düşer
+        def kur():
+            d = [{"id": f"p{i:02d}", "alanlar": ["İş"], "yakin": None} for i in range(20)]
+            d.append({"id": "desen-1", "alanlar": [], "yakin": None, "uyeler": ["p02", "p16"]})
+            return d
+        d = kur()
+        yerlesim.yerlestir(d, MERKEZLER)
+        desen = d[-1]
+        for o in d[:-1]:
+            self.assertGreaterEqual(uzaklik(desen, o), 60 - 1e-6, o["id"])
+        d2 = kur()
+        yerlesim.yerlestir(d2, MERKEZLER)
+        self.assertEqual(konumlar(d), konumlar(d2))
+
     def test_desen_uyelerin_ortasinda(self):
         d = [proje(i) for i in range(5)]
         d.append({"id": "desen-1", "alanlar": [], "yakin": None, "uyeler": ["proje-0", "proje-2", "proje-4"]})

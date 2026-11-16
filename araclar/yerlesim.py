@@ -30,12 +30,18 @@ def alan_tablosu_oku(yol: Path) -> dict:
 def alan_merkezleri(adlar, tablo=None):
     tablo = tablo or {}
     merkezler = {}
+    # Tabloda zaten kullanılan boş yerler atlanır: yeni bir alan çıkınca
+    # eski alanların yıldızları başka yere sıçramasın.
+    dolu = {tuple(v[:3]) for v in tablo.values()}
+    serbest = [i for i, yer in enumerate(BOS_YERLER) if tuple(yer) not in dolu]
+    if not serbest:
+        serbest = list(range(len(BOS_YERLER)))
     bos = 0
     for ad in sorted(set(adlar)):
         if ad in tablo:
             merkezler[ad] = tuple(tablo[ad])
         else:
-            i = bos % len(BOS_YERLER)
+            i = serbest[bos % len(serbest)]
             merkezler[ad] = (*BOS_YERLER[i], BOS_RENKLER[i])
             bos += 1
     return merkezler
@@ -135,3 +141,6 @@ def yerlestir(dugumler, merkezler):
             d["z"] = sum(u["z"] for u in uyeler) / n
         else:
             d["x"], d["y"], d["z"] = VARSAYILAN_MERKEZ
+    # Son geçiş: yalnız desenler oynar, hiçbir düğüme 60'tan yakın kalmaz.
+    if desenler:
+        _it({d["id"] for d in desenler}, sirali)
