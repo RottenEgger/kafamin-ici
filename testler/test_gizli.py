@@ -53,6 +53,14 @@ class GizliTesti(unittest.TestCase):
         self.assertEqual(d.tarih, date(2026, 11, 16))
         self.assertIn("aynı kararı", d.metin)
 
+    def test_ilgili_satiri_metne_girmez(self):
+        with tempfile.TemporaryDirectory() as t:
+            y = Path(t) / "g.md"
+            y.write_text("## X\n- [[A]] ⟷ [[B]]\n- bulundu: 2026-11-16\nAçıklama burada.\n\nİlgili: [[Y]]\n",
+                         encoding="utf-8")
+            baglar, _ = gizli.oku_gizli(y)
+        self.assertEqual(baglar[0].metin, "Açıklama burada.")
+
     def test_bos_dosya(self):
         with tempfile.TemporaryDirectory() as t:
             y = Path(t) / "bos.md"

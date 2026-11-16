@@ -88,7 +88,9 @@ def oku_gizli(yol: Path) -> tuple[list[Bag], list[Desen]]:
         return baglar, desenler
     for baslik, govde in _bolumler(yol.read_text(encoding="utf-8")):
         madde = [s[2:].strip() for s in govde if s.startswith("- ")]
-        aciklama = " ".join(s.strip() for s in govde if s.strip() and not s.startswith("- "))
+        # "İlgili: [[X]]" alt satırı not bilgisidir, açıklamaya girmez
+        aciklama = " ".join(s.strip() for s in govde
+                            if s.strip() and not s.startswith("- ") and not s.strip().startswith("İlgili:"))
         if any(re.match(r"durum:\s*yanlış", m) for m in madde):
             continue
         tarih, guven = None, "emin"
