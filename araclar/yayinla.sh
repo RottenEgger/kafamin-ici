@@ -23,18 +23,22 @@ fi
 
 # 3) Parolayı komuttan oku (ekrana yazılmaz) ve şifrele.
 $PAROLA_KOMUTU | node araclar/sifrele.mjs .yerel/veri.json docs/veri.sifreli.json .yerel/salt.txt
-echo "$YENI" > .yerel/ozet.txt
 
 # 4) Yalnızca şifreli dosya kaydedilir ve gönderilir.
 git add docs/veri.sifreli.json
 if git diff --cached --quiet -- docs/veri.sifreli.json; then
+  # Şifreli dosya zaten kayıtlıyla aynı (şifreleme her seferinde farklı çıktığı
+  # için pratikte olmaz); yine de durumu kaydedip çık.
+  echo "$YENI" > .yerel/ozet.txt
   echo "Değişiklik yok."
   exit 0
 fi
 git commit -q -m "Veri güncellendi" -- docs/veri.sifreli.json
 if [ "$GONDER" = "1" ]; then
   git push -q origin main
+  echo "$YENI" > .yerel/ozet.txt  # özet yalnızca başarılı gönderimden sonra
   echo "Veri güncellendi ve GitHub'a gönderildi."
 else
+  echo "$YENI" > .yerel/ozet.txt
   echo "Veri güncellendi (GONDER=0: gönderilmedi)."
 fi
