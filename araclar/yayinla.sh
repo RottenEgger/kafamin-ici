@@ -13,6 +13,18 @@ if [ "$DAL" != "main" ]; then
   exit 1
 fi
 
+# Yarım kalmış rebase/merge varsa dur (önce elle bitirilmeli)
+GITDIR="$(git rev-parse --git-dir)"
+if [ -d "$GITDIR/rebase-merge" ] || [ -d "$GITDIR/rebase-apply" ] || [ -f "$GITDIR/MERGE_HEAD" ]; then
+  echo "Hata: yarım kalmış bir rebase/merge var; önce elle bitir ya da iptal et (git rebase --abort)." >&2
+  exit 1
+fi
+# Kayıtlı dosyalarda kaydedilmemiş değişiklik varsa dur (izlenmeyen dosyalar sorun değil)
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "Hata: kayıtlı dosyalarda kaydedilmemiş değişiklik var; önce commit et ya da geri al. Yayın yapılmadı." >&2
+  exit 1
+fi
+
 KASA="${KASA:-$HOME/Desktop/İkinci Beyin}"
 # PAROLA_KOMUTU güvenilir geliştirici kancasıdır (test için); dışarıdan gelen veriyle doldurma.
 PAROLA_KOMUTU="${PAROLA_KOMUTU:-security find-generic-password -s kafamin-ici -w}"
@@ -51,7 +63,12 @@ if git diff --cached --quiet -- docs/veri.sifreli.json; then
 fi
 git commit -q -m "Veri güncellendi" -- docs/veri.sifreli.json
 if [ "$GONDER" != "0" ]; then
-  git pull --rebase --autostash -q origin main  # uzaktaki değişiklik varsa itme reddedilmesin
+  # Uzaktaki değişiklik varsa üstüne al; çakışırsa rebase'i geri al ve dur
+  if ! git pull --rebase -q origin main; then
+    git rebase --abort 2>/dev/null || true
+    echo "Hata: uzak depo ayrışmış (çakışma var); elle bakılmalı. Yayın yapılmadı, yerel kayıt duruyor." >&2
+    exit 1
+  fi
   git push -q origin main
   echo "$YENI" > .yerel/ozet.txt  # özet yalnızca başarılı gönderimden sonra
   echo "Veri güncellendi ve GitHub'a gönderildi."
