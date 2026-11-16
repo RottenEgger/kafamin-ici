@@ -68,7 +68,7 @@ def kucuk_harf(metin: str) -> str:
 
 def oku_frontmatter(metin: str) -> tuple[dict[str, str], str]:
     """Baştaki `---` arası `anahtar: değer` satırlarını ve gövdeyi döndürür."""
-    satirlar = metin.lstrip("﻿").splitlines()
+    satirlar = metin.lstrip("\ufeff").splitlines()
     if not satirlar or satirlar[0].strip() != "---":
         return {}, metin
     for i in range(1, len(satirlar)):
