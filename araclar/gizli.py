@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from kasa import kimlik  # noqa: E402
+from kasa import GIZLI_AD, kimlik, kucuk_harf  # noqa: E402
 
 AYIRAC = "⟷"
 DESEN_ONEK = "Desen:"
@@ -36,6 +36,7 @@ class Desen:
     uyeler: list[str]
     metin: str
     tarih: date | None
+    guven: str = "emin"  # "emin" | "tahmin"
 
 
 def uc_coz(uc: str) -> str:
@@ -80,7 +81,13 @@ def _tarih(satir: str) -> date | None:
         return None
 
 
-def oku_gizli(yol: Path) -> tuple[list[Bag], list[Desen]]:
+def _guven(deger: str) -> str:
+    """`güven:` değeri "tahmin" ile başlıyorsa "tahmin", yoksa ya da başka ise "emin"."""
+    return "tahmin" if kucuk_harf(deger).startswith("tahmin") else "emin"
+
+
+def oku_gizli(yol: Path, uyarilar: list[str] | None = None) -> tuple[list[Bag], list[Desen]]:
+    """Bağları ve desenleri okur; anlaşılmayan bölümler `uyarilar` listesine yazılır."""
     baglar: list[Bag] = []
     desenler: list[Desen] = []
     yol = Path(yol)
@@ -91,24 +98,28 @@ def oku_gizli(yol: Path) -> tuple[list[Bag], list[Desen]]:
         # "İlgili: [[X]]" alt satırı not bilgisidir, açıklamaya girmez
         aciklama = " ".join(s.strip() for s in govde
                             if s.strip() and not s.startswith("- ") and not s.strip().startswith("İlgili:"))
-        if any(re.match(r"durum:\s*yanlış", m) for m in madde):
+        if any(re.match(r"durum:\s*yanlış", kucuk_harf(m)) for m in madde):
             continue
         tarih, guven = None, "emin"
         for m in madde:
             tarih = tarih or _tarih(m)
-            g = GUVEN.search(m)
+            g = GUVEN.search(kucuk_harf(m))
             if g:
-                guven = g.group(1)
-        if baslik.startswith(DESEN_ONEK):
+                guven = _guven(g.group(1))
+        if kucuk_harf(baslik).startswith(kucuk_harf(DESEN_ONEK)):
             uyeler: list[str] = []
             for m in madde:
                 if m.startswith("üyeler:"):
                     uyeler = [uc_coz(u) for u in m[len("üyeler:"):].split("·") if u.strip()]
-            desenler.append(Desen(baslik[len(DESEN_ONEK):].strip(), uyeler, aciklama, tarih))
+            desenler.append(Desen(baslik[len(DESEN_ONEK):].strip(), uyeler, aciklama, tarih, guven))
             continue
         for m in madde:
             if AYIRAC in m:
                 sol, sag = m.split(AYIRAC, 1)
                 baglar.append(Bag(baslik, uc_coz(sol), uc_coz(sag), aciklama, guven, tarih))
                 break
+        else:
+            if uyarilar is not None:
+                uyarilar.append(f"{GIZLI_AD}: \"{baslik}\" bölümünde {AYIRAC} satırı ya da "
+                                f"\"{DESEN_ONEK}\" başlığı yok, atlandı")
     return baglar, desenler

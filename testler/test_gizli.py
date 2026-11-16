@@ -61,6 +61,36 @@ class GizliTesti(unittest.TestCase):
             baglar, _ = gizli.oku_gizli(y)
         self.assertEqual(baglar[0].metin, "Açıklama burada.")
 
+    def yaz_oku(self, icerik, uyarilar=None):
+        with tempfile.TemporaryDirectory() as t:
+            y = Path(t) / "g.md"
+            y.write_text(icerik, encoding="utf-8")
+            return gizli.oku_gizli(y, uyarilar)
+
+    def test_desen_guveni(self):
+        _, desenler = self.yaz_oku(
+            "## Desen: A\n- üyeler: [[X]] · [[Y]]\n- güven: tahmin\nm\n\n"
+            "## Desen: B\n- üyeler: [[X]] · [[Y]]\nm\n")
+        self.assertEqual([d.guven for d in desenler], ["tahmin", "emin"])
+
+    def test_guven_buyuk_harf_ve_ek(self):
+        baglar, _ = self.yaz_oku(
+            "## A\n- [[X]] ⟷ [[Y]]\n- Güven: Tahmin gibi\n\n## B\n- [[X]] ⟷ [[Z]]\n- GÜVEN: kesin\n")
+        self.assertEqual([b.guven for b in baglar], ["tahmin", "emin"])
+
+    def test_durum_yanlis_buyuk_harfle(self):
+        baglar, _ = self.yaz_oku("## A\n- [[X]] ⟷ [[Y]]\n- Durum: YANLIŞ\n\n## B\n- [[X]] ⟷ [[Z]]\n")
+        self.assertEqual([b.baslik for b in baglar], ["B"])
+
+    def test_ayracsiz_bolum_uyari_verir(self):
+        uyarilar = []
+        baglar, desenler = self.yaz_oku("## Eksik\n- bulundu: 2026-11-16\nmetin\n", uyarilar)
+        self.assertEqual((baglar, desenler), ([], []))
+        self.assertEqual(len(uyarilar), 1)
+        self.assertIn("Eksik", uyarilar[0])
+        # uyarı listesi verilmezse eskisi gibi sessiz çalışır
+        self.assertEqual(self.yaz_oku("## Eksik\nm\n"), ([], []))
+
     def test_bos_dosya(self):
         with tempfile.TemporaryDirectory() as t:
             y = Path(t) / "bos.md"

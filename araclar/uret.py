@@ -190,7 +190,7 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
 
     # Gizli bağlantılar ve desenler
     try:
-        baglar, desenler = oku_gizli(kok.joinpath(*GIZLI_YOL))
+        baglar, desenler = oku_gizli(kok.joinpath(*GIZLI_YOL), uyarilar)
     except Exception as hata:
         baglar, desenler = [], []
         uyarilar.append(f"{GIZLI_AD}: okunamadı ({hata})")
@@ -263,7 +263,7 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
                                 "alanlar": [], "uyeler": uyeler, "metin": d.metin, "sonraki": ""})
         for u in uyeler:
             gizli_kayitlari.append({"a": desen_id, "b": u, "baslik": "Kara deliğe çekilen: " + kimlik_ad[u],
-                                    "metin": "" if desen_hassas else d.metin, "guven": "emin"})
+                                    "metin": "" if desen_hassas else d.metin, "guven": d.guven})
     cozulenler = [c[0] for c in cozulen_desenler]
     for d in desenler:
         if not any(d is c for c in cozulenler):

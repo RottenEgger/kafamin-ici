@@ -362,6 +362,18 @@ class TestUstSinir(GeciciKasa):
         self.assertTrue(any("sınırı aşıldı" in u for u in uyarilar))
 
 
+class TestGizliGuven(GeciciKasa):
+    def test_desen_tahmin_guveni_gizli_kayda_gecer(self):
+        self.yaz("50 Kaynaklar/Gizli bağlantılar.md",
+                 "# G\n\n## Desen: Tahmini\n- üyeler: [[Bahçe]] · [[Kitap Kulübü]]\n"
+                 "- bulundu: 2026-11-16 · güven: tahmin\nm\n\n## Eksik bölüm\n- bulundu: 2026-11-16\n")
+        veri, uyarilar = uret.uret_uyarili(self.kok, BUGUN)
+        kayit = [g for g in veri["gizli"] if g["a"] == "desen:Tahmini"]
+        self.assertTrue(kayit)
+        self.assertTrue(all(g["guven"] == "tahmin" for g in kayit))
+        self.assertTrue(any("Eksik bölüm" in u for u in uyarilar))
+
+
 class TestAnaGiris(GeciciKasa):
     def calistir(self, kasa):
         cikti = Path(self.gecici.name) / "cikti.json"
