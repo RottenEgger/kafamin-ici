@@ -376,8 +376,6 @@ for (const a of VERI.alanlar) {
 /* ---------------- düğümler ---------------- */
 const DUGUMLER = VERI.dugumler.map(d => ({ ...d }));
 const tiklananlar = []; // ışın (ray) ile seçilecek görünmez küreler ve tüpler
-const kdParcalar = [];  // kara deliğe düşen parçacıklar
-let kdDisk = null;
 
 for (const d of DUGUMLER) {
   d.poz = konum3(d.x, d.y, d.z);
@@ -391,14 +389,15 @@ for (const d of DUGUMLER) {
     g.add(kure);
     const egik = new THREE.Group(); egik.rotation.set(-1.15, .25, 0); g.add(egik);
     const diskMat = new THREE.MeshBasicMaterial({ map: DISK, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, opacity: .6 });
-    kdDisk = new THREE.Mesh(new THREE.PlaneGeometry(22, 22), diskMat); egik.add(kdDisk);
+    d.kdDisk = new THREE.Mesh(new THREE.PlaneGeometry(22, 22), diskMat); egik.add(d.kdDisk);
     d.matlar.push({ m: diskMat, taban: .6 });
     const fotonMat = new THREE.MeshBasicMaterial({ color: 0xffe2a8, transparent: true, opacity: .9 });
     const foton = new THREE.Mesh(new THREE.TorusGeometry(2.95, .09, 12, 96), fotonMat); g.add(foton); d.foton = foton;
     d.matlar.push({ m: fotonMat, taban: .9 });
     // içeri doğru sarmal çizen parçacıklar
     const n = 260, poz = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) kdParcalar.push({ r: 3 + rnd() * 9, a: rnd() * Math.PI * 2 });
+    d.kdParcalar = []; // bu kara deliğe düşen parçacıklar
+    for (let i = 0; i < n; i++) d.kdParcalar.push({ r: 3 + rnd() * 9, a: rnd() * Math.PI * 2 });
     const pGeo = new THREE.BufferGeometry(); pGeo.setAttribute("position", new THREE.BufferAttribute(poz, 3));
     const pMat = new THREE.PointsMaterial({ map: PARILTI, color: 0xffc27a, size: .4, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
     const pts = new THREE.Points(pGeo, pMat); egik.add(pts); d.kdNoktalar = pts; d.matlar.push({ m: pMat, taban: 1 });
@@ -575,7 +574,6 @@ for (const id of VERI.buHafta) {
 
 /* ---------------- canlandırma döngüsü ---------------- */
 const saat = new THREE.Clock();
-const kdPoz = DUGUMLER.find(d => d.kdNoktalar)?.kdNoktalar.geometry.attributes.position;
 uc(new THREE.Vector3(), GENEL_POZ.clone(), 3.2); // açılışta uzaktan süzülerek gel
 
 function dongu() {
@@ -597,9 +595,11 @@ function dongu() {
     const kucukGizli = dar && !odak && d.etiket.classList.contains("kucuk");
     d.etiket.style.opacity = kucukGizli ? 0 : d.dim < .5 ? d.dim * 1.4 : 1;
   }
-  if (kdDisk) kdDisk.rotation.z -= dt * .35 * yavas;
-  if (kdPoz) {
-    kdParcalar.forEach((p, i) => {
+  for (const d of DUGUMLER) { // her desenin kendi diski ve parçacıkları döner
+    if (!d.kdDisk) continue;
+    d.kdDisk.rotation.z -= dt * .35 * yavas;
+    const kdPoz = d.kdNoktalar.geometry.attributes.position;
+    d.kdParcalar.forEach((p, i) => {
       p.a += dt * (5 / p.r) * yavas; p.r -= dt * (.6 + 2.4 / p.r) * yavas;
       if (p.r < 2.7) { p.r = 9 + rnd() * 4; p.a = rnd() * Math.PI * 2; }
       kdPoz.setXYZ(i, Math.cos(p.a) * p.r, Math.sin(p.a) * p.r, (rnd() - .5) * .15);
