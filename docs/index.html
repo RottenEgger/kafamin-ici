@@ -2,7 +2,14 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#04060f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kafamın İçi">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="ikon-180.png">
 <title>Kafamın İçi</title>
 <!-- 3B sürüm (three.js). Veri şifreli (veri.sifreli.json); parola girilince çözülür, bu dosya sadece çiziyor. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -140,6 +147,14 @@
   <div class="serit" id="serit"></div>
 </footer>
 
+<script>
+// Servis çalışanı (sw.js): çevrimdışı açılış. Ayrı betik, çünkü aşağıdaki modül parola beklerken durur.
+if ("serviceWorker" in navigator)
+  navigator.serviceWorker.register("./sw.js").then(() => navigator.serviceWorker.ready)
+    // ilk ziyarette veri henüz servis çalışanından geçmedi: bir kez daha iste ki son kopya saklansın
+    .then(() => fetch("veri.sifreli.json", { cache: "no-store" }))
+    .catch(() => {});
+</script>
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -625,6 +640,7 @@ addEventListener("resize", () => {
 if (matchMedia("(pointer: coarse)").matches)
   document.getElementById("ipucu").textContent = "Sürükle: döndür · iki parmak: yaklaş · dokun: aç";
 setTimeout(() => document.getElementById("ipucu").style.opacity = 0, 6000);
+
 </script>
 </body>
 </html>
