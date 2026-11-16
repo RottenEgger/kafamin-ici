@@ -1,6 +1,7 @@
 // Servis çalışanı: sayfayı çevrimdışı açar.
 // Kabuk (sayfa, kilit.js, three.js) önbelleğe alınır; veri önce ağdan, olmazsa son kopyadan gelir.
-// Kabuktaki bir şey değişince SURUM'u artır: eski kabuk önbelleği silinir.
+// Yerel dosyalar (sayfa, kilit.js, manifest, ikonlar) önce ağdan alınır, olmazsa önbellekten gelir;
+// bu yüzden içerik güncellemesi için SURUM artırmak GEREKMEZ. SURUM yalnız eski önbellekleri temizlemek içindir.
 const SURUM = "v1";
 const KABUK = "kafamin-kabuk-" + SURUM;
 const VERI = "kafamin-veri"; // sürümden bağımsız: sürüm değişince son veri kaybolmasın
@@ -30,7 +31,9 @@ const FONT_SUNUCULARI = ["fonts.googleapis.com", "fonts.gstatic.com"];
 self.addEventListener("install", (olay) => {
   olay.waitUntil((async () => {
     const onbellek = await caches.open(KABUK);
-    await onbellek.addAll([...YEREL, ...THREE_URLLERI]); // biri indirilemezse kurulum başarısız olur
+    // biri indirilemezse kurulum başarısız olur; yerel dosyalar HTTP önbelleğini atlayarak alınır
+    await Promise.all(YEREL.map((y) => onbellek.add(new Request(y, { cache: "reload" }))));
+    await onbellek.addAll(THREE_URLLERI);
     // Yazı tipleri isteğe bağlı: ulaşılamazsa kurulumu bozma
     try {
       await onbellek.add("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=DM+Sans:wght@400;500;700&display=swap");
@@ -62,7 +65,22 @@ async function veriGetir(istek) {
   }
 }
 
-// Diğerleri: önce önbellek; yoksa ağdan al, yazı tipiyse sakla.
+// Yerel kabuk: önce ağ (her başarılı yanıt önbelleği günceller), ağ yoksa ya da yanıt ok değilse önbellek.
+async function yerelGetir(istek, anahtar) {
+  const onbellek = await caches.open(KABUK);
+  try {
+    const yanit = await fetch(istek, { cache: "no-cache" });
+    if (yanit.ok) {
+      await onbellek.put(anahtar, yanit.clone());
+      return yanit;
+    }
+  } catch (_) { /* çevrimdışı: önbelleğe düş */ }
+  const eski = await onbellek.match(anahtar, { ignoreSearch: true });
+  if (eski) return eski;
+  return fetch(istek);
+}
+
+// Diğerleri (three.js sabit sürüm, yazı tipleri): önce önbellek; yoksa ağdan al, yazı tipiyse sakla.
 async function onbellekOnce(istek) {
   const bulunan = await caches.match(istek, { ignoreSearch: true });
   if (bulunan) return bulunan;
@@ -84,10 +102,12 @@ self.addEventListener("fetch", (olay) => {
     return;
   }
   if (istek.mode === "navigate") {
-    // Sayfa açılışı: kabuktaki index.html (çevrimdışıyken de çalışsın)
-    olay.respondWith(
-      caches.match("index.html", { ignoreSearch: true }).then((b) => b || fetch(istek))
-    );
+    // Sayfa açılışı: hep index.html (çevrimdışıyken de çalışsın)
+    olay.respondWith(yerelGetir(istek, new URL("index.html", self.location).href));
+    return;
+  }
+  if (url.origin === self.location.origin) {
+    olay.respondWith(yerelGetir(istek, istek.url));
     return;
   }
   olay.respondWith(onbellekOnce(istek));
