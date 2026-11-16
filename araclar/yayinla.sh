@@ -19,9 +19,15 @@ if [ -d "$GITDIR/rebase-merge" ] || [ -d "$GITDIR/rebase-apply" ] || [ -f "$GITD
   echo "Hata: yarım kalmış bir rebase/merge var; önce elle bitir ya da iptal et (git rebase --abort)." >&2
   exit 1
 fi
-# Kayıtlı dosyalarda kaydedilmemiş değişiklik varsa dur (izlenmeyen dosyalar sorun değil)
-if ! git diff --quiet || ! git diff --cached --quiet; then
+# Betiğin kendi ürettiği şifreli dosya yarım kalmış olabilir; tek kirli dosya oysa geri al (yeniden üretilir)
+SIFRELI="docs/veri.sifreli.json"
+KIRLI="$( { git diff --name-only; git diff --cached --name-only; } | sort -u)"
+if [ "$KIRLI" = "$SIFRELI" ]; then
+  git restore --staged --worktree -- "$SIFRELI"
+  echo "Not: önceki çalışmadan yarım kalan $SIFRELI geri alındı."
+elif [ -n "$KIRLI" ]; then
   echo "Hata: kayıtlı dosyalarda kaydedilmemiş değişiklik var; önce commit et ya da geri al. Yayın yapılmadı." >&2
+  git status --short >&2
   exit 1
 fi
 
@@ -63,10 +69,11 @@ if git diff --cached --quiet -- docs/veri.sifreli.json; then
 fi
 git commit -q -m "Veri güncellendi" -- docs/veri.sifreli.json
 if [ "$GONDER" != "0" ]; then
-  # Uzaktaki değişiklik varsa üstüne al; çakışırsa rebase'i geri al ve dur
+  # Uzaktaki değişiklik varsa üstüne al; olmazsa rebase'i geri al ve dur (git'in hatası görünür kalır)
   if ! git pull --rebase -q origin main; then
     git rebase --abort 2>/dev/null || true
-    echo "Hata: uzak depo ayrışmış (çakışma var); elle bakılmalı. Yayın yapılmadı, yerel kayıt duruyor." >&2
+    echo "Hata: GitHub'dan güncel hâl alınamadı: bağlantı sorunu ya da çakışma. Yayın yapılmadı, yerel kayıt duruyor." >&2
+    echo "Bu bilgisayardan başka yerde bu depoda değişiklik yapmadıysan: git -C \"$(pwd)\" reset --hard origin/main  ve sonra betiği yeniden çalıştır." >&2
     exit 1
   fi
   git push -q origin main
