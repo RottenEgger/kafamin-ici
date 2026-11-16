@@ -2,9 +2,19 @@
 # Veriyi üretir, şifreler ve GitHub'a gönderir. Veri değişmediyse hiçbir şey yapmaz.
 # Test için: PAROLA_KOMUTU parolayı okuyan komutu, GONDER=0 ise "git push"u atlar.
 set -euo pipefail
+# Zamanlanmış çalışmada PATH dar olabilir (node, python3 Homebrew'da)
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 cd "$(dirname "$0")/.."
 
+# Yalnız main dalından yayınlanır (docs/ yalnızca oradan sunulur)
+DAL="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+if [ "$DAL" != "main" ]; then
+  echo "Hata: yayınlamak için main dalında olmalısın (şu an: ${DAL:-bağımsız HEAD})." >&2
+  exit 1
+fi
+
 KASA="${KASA:-$HOME/Desktop/İkinci Beyin}"
+# PAROLA_KOMUTU güvenilir geliştirici kancasıdır (test için); dışarıdan gelen veriyle doldurma.
 PAROLA_KOMUTU="${PAROLA_KOMUTU:-security find-generic-password -s kafamin-ici -w}"
 GONDER="${GONDER:-1}"
 
@@ -22,7 +32,13 @@ if [ "$YENI" = "$ESKI" ] && [ -f docs/veri.sifreli.json ]; then
 fi
 
 # 3) Parolayı komuttan oku (ekrana yazılmaz) ve şifrele.
-$PAROLA_KOMUTU | node araclar/sifrele.mjs .yerel/veri.json docs/veri.sifreli.json .yerel/salt.txt
+# Parola komut satırına ya da kayda girmez; yalnız boru (stdin) ile gider.
+if ! PAROLA="$($PAROLA_KOMUTU 2>/dev/null)" || [ -z "$PAROLA" ]; then
+  echo "Hata: parola Anahtar Zinciri'nden okunamadı. Önce bir kez 'bash araclar/kur_parola.sh' çalıştır." >&2
+  exit 1
+fi
+printf '%s\n' "$PAROLA" | node araclar/sifrele.mjs .yerel/veri.json docs/veri.sifreli.json .yerel/salt.txt
+unset PAROLA
 
 # 4) Yalnızca şifreli dosya kaydedilir ve gönderilir.
 git add docs/veri.sifreli.json
@@ -34,7 +50,8 @@ if git diff --cached --quiet -- docs/veri.sifreli.json; then
   exit 0
 fi
 git commit -q -m "Veri güncellendi" -- docs/veri.sifreli.json
-if [ "$GONDER" = "1" ]; then
+if [ "$GONDER" != "0" ]; then
+  git pull --rebase --autostash -q origin main  # uzaktaki değişiklik varsa itme reddedilmesin
   git push -q origin main
   echo "$YENI" > .yerel/ozet.txt  # özet yalnızca başarılı gönderimden sonra
   echo "Veri güncellendi ve GitHub'a gönderildi."
