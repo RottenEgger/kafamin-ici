@@ -31,6 +31,19 @@ function saltAl(yol) {
   return salt;
 }
 
+// `security -w` ASCII dışı parolayı onaltılık (hex) metin olarak yazar.
+// Hex görünüp UTF-8'e çözülen ve ASCII dışı karakter içeren metin gerçek paroladır.
+export function parolaHazirla(ham) {
+  const metin = ham.replace(/\r?\n$/, "");
+  if (metin === "" || metin.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(metin)) return metin;
+  try {
+    const cozuk = new TextDecoder("utf-8", { fatal: true }).decode(Buffer.from(metin, "hex"));
+    return /[^\x00-\x7f]/.test(cozuk) ? cozuk : metin;
+  } catch {
+    return metin;
+  }
+}
+
 async function stdinOku() {
   const parcalar = [];
   for await (const p of process.stdin) parcalar.push(p);
@@ -43,8 +56,8 @@ async function main() {
     console.error("Kullanım: node araclar/sifrele.mjs <duz.json> <cikti.json> <salt.txt>  (parola stdin'den)");
     process.exit(2);
   }
-  // Yalnız tek bir sondaki satır sonunu at (\n ya da \r\n)
-  const parola = (await stdinOku()).replace(/\r?\n$/, "");
+  // Yalnız tek bir sondaki satır sonu atılır; hex çıktısı çözülür (yukarıya bak)
+  const parola = parolaHazirla(await stdinOku());
   if (parola === "") {
     console.error("Hata: parola boş. Parolayı stdin'den verin.");
     process.exit(1);

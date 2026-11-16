@@ -32,6 +32,7 @@ bash araclar/kur_parola.sh
 
 Parolayı Terminal sorar ve ekrana yazmaz; macOS Anahtar Zinciri'ne kaydedilir.
 Uzun bir parola cümlesi seç ve güvenli bir yere de kaydet. Unutursan veri açılamaz.
+Parolada Türkçe harf varsa Anahtar Zinciri onu onaltılık (hex) metin olarak verir; şifreleme betiği bunu otomatik düz parolaya çevirir.
 
 ## Yayınlama
 
