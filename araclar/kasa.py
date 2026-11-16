@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+GIZLI_AD = "Gizli bağlantılar"
 SON_GUN = 7  # "son 7 gün": bugün ve önceki 6 gün
 
 LINK = re.compile(r"\[\[([^\]|#]+)")
@@ -191,6 +192,8 @@ def oku_kasa(kok: Path, bugun: date) -> Kasa:
     for klasor, liste in (("20 Projeler", kasa.projeler), ("40 Fikirler", kasa.fikirler),
                           ("50 Kaynaklar", kasa.kaynaklar)):
         for yol, fm, govde in oku_notlar(klasor):
+            if yol.stem == GIZLI_AD:  # bağlantı notu düğüm değil; gizli.py okur
+                continue
             try:
                 liste.append(not_olustur(yol, fm, govde))
                 kasa.baglantilar[yol.stem] = set(linkler(govde))
