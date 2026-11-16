@@ -4,7 +4,9 @@ Kullanım: python3 -I araclar/uret.py <kasa> <cikti.json> [--bugun YYYY-AA-GG]
 Yalnız standart kütüphane kullanır. Bozuk not ya da bağ haritayı durdurmaz;
 uyarı listesine yazılır.
 """
+import hashlib
 import json
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -42,6 +44,16 @@ def temiz_metin(metin: str) -> str:
     for atilacak in ("[[", "]]", "**", "~~"):
         metin = metin.replace(atilacak, "")
     return " ".join(metin.split())
+
+
+def rakam_maskele(metin: str) -> str:
+    """Hassas alanda sayılar (tutar, tarih...) haritaya gitmez."""
+    return re.sub(r"\d[\d.,]*", "•••", metin)
+
+
+def gizli_kimlik(eski: str) -> str:
+    """Hassas düğümün kimliği özgün metni taşımasın: özetin ilk 12 hex hanesi."""
+    return "gorev:" + hashlib.sha1(eski.encode("utf-8")).hexdigest()[:12]
 
 
 def kisalt(metin: str, sinir: int = 48) -> str:
@@ -293,10 +305,25 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
         alan_tablosunu_yaz(Path(tablo_yolu), merkezler, tablo, uyarilar)
     yerlestir(dugumler, merkezler)
 
+    # Hassas düğümler: ad içindeki sayılar maskelenir; metin taşıyan kimlikler özetle değişir
+    idharita: dict[str, str] = {}
+    for d in dugumler:
+        if d["id"] not in hassas_idler:
+            continue
+        maskeli = rakam_maskele(d["ad"])
+        if d["tur"] == "gorev" or maskeli != d["ad"]:
+            idharita[d["id"]] = gizli_kimlik(d["id"])
+        d["ad"] = maskeli
+    yeni = lambda k: idharita.get(k, k)  # noqa: E731
+    for g in gizli_kayitlari:
+        if {g["a"], g["b"]} & hassas_idler:
+            g["baslik"] = rakam_maskele(g["baslik"])
+        g["a"], g["b"] = yeni(g["a"]), yeni(g["b"])
+
     # Çıktı düğümleri
     cikti = []
     for d in dugumler:
-        o = {"id": d["id"], "ad": d["ad"], "tur": d["tur"], "durum": d["durum"],
+        o = {"id": yeni(d["id"]), "ad": d["ad"], "tur": d["tur"], "durum": d["durum"],
              "x": round(float(d["x"]), 1), "y": round(float(d["y"]), 1), "z": round(float(d["z"]), 1),
              "alan": "Desen" if d["tur"] == "karadelik" else " + ".join(d["alanlar"][:2])}
         if d["id"] not in hassas_idler:  # para/sağlık gibi alanlarda yalnız adlar gider
@@ -326,7 +353,7 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
         "alanlar": [{"ad": ad, "x": float(m[0]), "y": float(m[1]), "z": float(m[2]), "renk": m[3]}
                     for ad, m in sorted(merkezler.items())],
         "dugumler": cikti,
-        "acik": [list(c) for c in sorted(cift)],
+        "acik": [list(c) for c in sorted({tuple(sorted((yeni(x), yeni(y)))) for x, y in cift})],
         "gizli": gizli_kayitlari,
         "buHafta": bu_hafta,
     }

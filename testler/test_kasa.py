@@ -27,6 +27,10 @@ class KasaTesti(unittest.TestCase):
         self.assertEqual(kasa.kimlik("Dizi İzle"), kasa.kimlik("dizi izle"))
         self.assertEqual(kasa.kimlik("**IŞIK** al"), "gorev:ışık al")
 
+    def test_frontmatter_tirnaklari_atilir(self):
+        fm, _ = kasa.oku_frontmatter("---\na: \"evet\"\nb: 'evet'\nc: \"x'\nd: 'iç \"tırnak\"'\n---\n")
+        self.assertEqual(fm, {"a": "evet", "b": "evet", "c": "\"x'", "d": "iç \"tırnak\""})
+
     def test_frontmatter_ve_govde(self):
         fm, govde = kasa.oku_frontmatter("---\ndurum: aktif\nklasor: ~/x\n---\n# Baslik\n")
         self.assertEqual(fm, {"durum": "aktif", "klasor": "~/x"})

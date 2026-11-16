@@ -66,6 +66,13 @@ def kucuk_harf(metin: str) -> str:
     return metin.replace("İ", "i").replace("I", "ı").lower()
 
 
+def tirnak_at(deger: str) -> str:
+    """Değeri saran tek bir eşleşen tırnak çiftini ('..' ya da "..") atar."""
+    if len(deger) >= 2 and deger[0] == deger[-1] and deger[0] in "\"'":
+        return deger[1:-1].strip()
+    return deger
+
+
 def oku_frontmatter(metin: str) -> tuple[dict[str, str], str]:
     """Baştaki `---` arası `anahtar: değer` satırlarını ve gövdeyi döndürür."""
     satirlar = metin.lstrip("\ufeff").splitlines()
@@ -77,7 +84,7 @@ def oku_frontmatter(metin: str) -> tuple[dict[str, str], str]:
             for satir in satirlar[1:i]:
                 if ":" in satir:
                     anahtar, deger = satir.split(":", 1)
-                    fm[anahtar.strip()] = deger.strip()
+                    fm[anahtar.strip()] = tirnak_at(deger.strip())
             return fm, "\n".join(satirlar[i + 1:]) + "\n"
     raise ValueError("frontmatter kapanmıyor")
 

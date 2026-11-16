@@ -323,10 +323,40 @@ class TestHassasSizinti(GeciciKasa):
     def test_hassas_alandaki_yapilacak_adi_var_metni_yok(self):
         self.hassas_kur()
         self.yaz("10 Günlük/2026-11-16.md", "# 2026-11-16\n- [ ] Vergiyi öde [[Bütçe Takibi]]\n")
-        g = self.dugum(uret.uret(self.kok, BUGUN), "gorev:vergiyi öde bütçe takibi")
-        self.assertEqual(g["ad"], "Vergiyi öde Bütçe Takibi")
+        veri = uret.uret(self.kok, BUGUN)
+        g = next(d for d in veri["dugumler"] if d["ad"] == "Vergiyi öde Bütçe Takibi")
+        self.assertNotIn("vergiyi", g["id"])
         self.assertNotIn("metin", g)
         self.assertNotIn("sonraki", g)
+
+    def test_hassas_alanda_sayilar_hicbir_yerde_yok(self):
+        self.hassas_kur()
+        self.yaz("10 Günlük/2026-11-16.md", "# 2026-11-16\n- [ ] [[Para]] kira 12.500 TL öde\n- [ ] [[Bahçe]] fide al\n")
+        self.yaz("50 Kaynaklar/Gizli bağlantılar.md",
+                 "# G\n\n## Kira bağı\n- [[Para]] kira 12.500 TL öde ⟷ [[Bahçe]]\n- bulundu: 2026-11-16\nm\n\n"
+                 "## Desen: Kira deseni\n- üyeler: [[Para]] kira 12.500 TL öde · [[Bahçe]] fide al\n"
+                 "- bulundu: 2026-11-16\nm\n")
+        veri = uret.uret(self.kok, BUGUN)
+        ham = json.dumps(veri, ensure_ascii=False)
+        self.assertNotIn("12.500", ham)
+        self.assertNotIn("12500", ham)
+        g = next(d for d in veri["dugumler"] if d["ad"] == "Para kira ••• TL öde")
+        # her gönderim aynı kimliği kullanır: bağ, açık bağ, bu hafta, gizli kayıt
+        idler = {d["id"] for d in veri["dugumler"]}
+        self.assertEqual(len(idler), len(veri["dugumler"]))
+        for a, b in veri["acik"]:
+            self.assertTrue({a, b} <= idler)
+        for gz in veri["gizli"]:
+            self.assertTrue({gz["a"], gz["b"]} <= idler)
+        self.assertTrue(set(veri["buHafta"]) <= idler)
+        self.assertIn(g["id"], veri["buHafta"])
+        self.assertTrue([gz for gz in veri["gizli"] if g["id"] in (gz["a"], gz["b"])])
+
+    def test_tirnakli_hassas_dikkate_alinir(self):
+        self.yaz("30 Alanlar/Para.md", "---\ntur: alan\nhassas: \"evet\"\n---\n# Para\n")
+        self.yaz("10 Günlük/2026-11-16.md", "# 2026-11-16\n- [ ] [[Para]] kira 900 öde\n")
+        veri = uret.uret(self.kok, BUGUN)
+        self.assertNotIn("900", json.dumps(veri, ensure_ascii=False))
 
 
 class TestUstSinir(GeciciKasa):
