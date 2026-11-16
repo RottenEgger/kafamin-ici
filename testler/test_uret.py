@@ -172,11 +172,26 @@ class TestAlanlar(GeciciKasa):
             d = self.dugum(veri, ad)
             self.assertEqual((d["tur"], d["alan"], d["durum"]), ("ders", "Okul", "surekli"))
 
-    def test_yapilacak_proje_gorunmeyen(self):
+    def test_biten_ve_birakilan_proje_arsivde(self):
         self.yaz("20 Projeler/Bahçe.md",
                  "---\ndurum: bırakıldı\n---\n# Bahçe\n\nİlgili: [[Hayat]]\n")
-        ids = {d["id"] for d in uret.uret(self.kok, BUGUN)["dugumler"]}
-        self.assertNotIn("Bahçe", ids)
+        self.yaz("20 Projeler/Kitap Kulübü.md", "---\ndurum: Bitti\n---\n# Kitap Kulübü\n")
+        veri = uret.uret(self.kok, BUGUN)
+        self.assertEqual(self.dugum(veri, "Bahçe")["durum"], "arsiv")
+        self.assertEqual(self.dugum(veri, "Kitap Kulübü")["durum"], "arsiv")
+        self.assertNotIn("Bahçe", veri["buHafta"])
+
+    def test_arsiv_projeler_ilk_dusen_katman(self):
+        for i in range(6):
+            self.yaz(f"20 Projeler/Eski {i}.md", f"---\ndurum: bitti\ntarih: 2026-0{i + 1}-01\n---\n# Eski {i}\n")
+        for i in range(60):  # 60 fikir + 6 arşiv proje sınırı aşar
+            self.yaz(f"40 Fikirler/F {i:02d}.md", f"---\ndurum: tohum\ntarih: 2026-10-{1 + i // 3:02d}\n---\n# F {i:02d}\n")
+        veri, _ = uret.uret_uyarili(self.kok, BUGUN)
+        self.assertLessEqual(len(veri["dugumler"]), 60)
+        arsiv = {d["id"] for d in veri["dugumler"] if d["durum"] == "arsiv"}
+        fikir = [d for d in veri["dugumler"] if d["tur"] == "fikir"]
+        self.assertTrue(len(fikir) >= 50)  # önce arşiv gitti, fikirler dokunulmadı
+        self.assertNotIn("Eski 0", arsiv)  # en eski arşiv önce düşer
 
     def test_ilk_ve_sonraki_calisma_ayni(self):
         tablo = self.kok.parent / "yeni_alanlar.json"

@@ -25,7 +25,7 @@ EN_FAZLA_DUGUM = 60
 EN_FAZLA_YAPILAN = 8  # bağlantısız yapılanlar (küçük yıldız) en çok 8
 UNUTULMUS_GUN = 14  # bundan eski açık iş "unutulmuş olabilir"
 GOSTERME_GUN = 30  # bundan eski açık iş hiç gösterilmez
-GORULMEYEN_PROJE = ("bitti", "bırakıldı")
+ARSIV_PROJE = ("bitti", "bırakıldı")  # sönük ve küçük çizilir, ilk düşen katman
 GORULMEYEN_FIKIR = ("projeye döndü", "vazgeçildi")
 VARSAYILAN_ALAN = "Hayat"
 GIZLI_YOL = ("50 Kaynaklar", GIZLI_AD + ".md")
@@ -107,9 +107,10 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
     hassas = {a.ad for a in kasa.alanlar if a.hassas}
     yedek = [VARSAYILAN_ALAN] if VARSAYILAN_ALAN in alan_adlari else alan_adlari[:1]
 
-    gorunen_projeler = [p for p in kasa.projeler if kucuk_harf(p.durum) not in GORULMEYEN_PROJE]
+    arsiv_mi = lambda p: kucuk_harf(p.durum) in ARSIV_PROJE  # noqa: E731
+    gorunen_projeler = [p for p in kasa.projeler if not arsiv_mi(p)]
     proje_alani: dict[str, list[str]] = {}
-    for p in gorunen_projeler:
+    for p in kasa.projeler:
         listeden = [a.ad for a in kasa.alanlar if p.ad in a.projeler]
         notta = [h for h in sorted(kasa.baglantilar.get(p.ad, ())) if h in alan_adlari]
         proje_alani[p.ad] = listeden or notta or list(yedek)
@@ -133,14 +134,16 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
         dugumler.append(dugum)
         return True
 
-    # Projeler
-    for p in gorunen_projeler:
+    # Projeler (bitmiş/bırakılmışlar "arsiv" durumuyla gider)
+    arsiv_tarihi: dict[str, date] = {}
+    for p in kasa.projeler:
         metin = p.amac or ""
         if p.kaldigim:
             metin = (metin + " Kaldığım yer: " + p.kaldigim).strip()
-        ekle({"id": p.ad, "ad": p.ad, "tur": "proje",
-              "durum": "bitti" if p.ad in kasa.ilerleyen else "surekli",
-              "alanlar": proje_alani[p.ad], "metin": metin, "sonraki": p.sonraki})
+        durum = "arsiv" if arsiv_mi(p) else "bitti" if p.ad in kasa.ilerleyen else "surekli"
+        if ekle({"id": p.ad, "ad": p.ad, "tur": "proje", "durum": durum,
+                 "alanlar": proje_alani[p.ad], "metin": metin, "sonraki": p.sonraki}) and durum == "arsiv":
+            arsiv_tarihi[p.ad] = p.tarih or date.min
 
     # Dersler
     ders_yeri = ders_alanlari(kok)
@@ -208,12 +211,12 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
         uyarilar.append(f"{GIZLI_AD}: okunamadı ({hata})")
     biten_gorevler = {g.id for g in kasa.gorevler if g.bitti}
 
-    # Düşürme sırası: önce eski kaynaklar, sonra eski yapılanlar, sonra eski fikirler,
-    # en son unutulmuş yapılacaklar. Proje, ders, kara delik ve taze yapılacak hiç düşmez.
+    # Düşürme sırası: önce arşivdeki projeler, sonra eski kaynaklar, sonra eski yapılanlar, sonra eski fikirler,
+    # en son unutulmuş yapılacaklar. Etkin proje, ders, kara delik ve taze yapılacak hiç düşmez.
     def eskiden_yeniye(tarihler: dict) -> list[str]:
         return [k for k, _ in sorted(tarihler.items(), key=lambda t: (t[1], t[0]))]
 
-    dusurulecek = (eskiden_yeniye(kaynak_tarihi) + eskiden_yeniye(yapilan_tarihi)
+    dusurulecek = (eskiden_yeniye(arsiv_tarihi) + eskiden_yeniye(kaynak_tarihi) + eskiden_yeniye(yapilan_tarihi)
                    + eskiden_yeniye(fikir_tarihi) + eskiden_yeniye(unutulmus_tarihi))
 
     def uc_coz(uc: str, kimlikler: set[str]) -> str | None:
