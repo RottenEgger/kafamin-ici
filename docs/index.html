@@ -67,11 +67,12 @@
 
   .ipucu{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);font-size:13px;color:var(--soluk);background:rgba(0,0,0,.45);
     padding:6px 14px;border-radius:999px;pointer-events:none;transition:opacity 1.2s;z-index:3;white-space:nowrap}
-  .hata{position:fixed;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--soluk)}
+  .hata{position:fixed;inset:0;z-index:30;display:grid;place-items:center;text-align:center;padding:24px;color:var(--soluk)}
   nav button.kilitle{background:none;border-color:rgba(255,255,255,.08);color:var(--soluk)}
 
   /* kilit ekranı: bulanık gökyüzü üstünde tek alan */
   #kilit{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px;background:var(--gece);transition:opacity .6s}
+  #kilit[hidden]{display:none}
   #kilit.gitti{opacity:0;pointer-events:none}
   #kilit .gok{position:absolute;inset:-40px;filter:blur(14px);opacity:.9;
     background:
@@ -152,6 +153,7 @@ import { anahtarTuret, coz, anahtarSakla, anahtarGetir, anahtarSil } from "./kil
 /* ---------------- kilit: şifreli veriyi çek, çöz ---------------- */
 const kilitKutu = document.getElementById("kilit");
 const kilitHata = document.getElementById("kilitHata");
+document.getElementById("kilitForm").onsubmit = e => e.preventDefault(); // parola istenmeden sayfa yenilenmesin
 
 document.getElementById("kilitle").onclick = async () => {
   try { await anahtarSil(); } catch { /* depo yoksa da yenile */ }
