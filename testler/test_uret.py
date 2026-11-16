@@ -288,6 +288,70 @@ class TestSinirlar(GeciciKasa):
             self.assertTrue(a in kimlikler and b in kimlikler)
 
 
+class TestHassasSizinti(GeciciKasa):
+    def hassas_kur(self):
+        self.yaz("20 Projeler/Bütçe Takibi.md",
+                 "---\ndurum: aktif\n---\n# Bütçe Takibi\n\n**Amaç:** x\n")
+        self.yaz("30 Alanlar/Para.md",
+                 "---\ntur: alan\nhassas: evet\n---\n# Para\n\n## Projeler\n- [[Bütçe Takibi]]\n")
+
+    def test_hassas_uclu_bag_ve_desen_metni_gitmez(self):
+        self.hassas_kur()
+        self.yaz("50 Kaynaklar/Gizli bağlantılar.md",
+                 "# Gizli bağlantılar\n\n## Para bağı\n- [[Bütçe Takibi]] ⟷ [[Bahçe]]\n"
+                 "- bulundu: 2026-11-16\nGIZLIBAGMETNI bakiye\n\n"
+                 "## Desen: Para deseni\n- üyeler: [[Bütçe Takibi]] · [[Bahçe]]\n"
+                 "- bulundu: 2026-11-16\nGIZLIDESENMETNI bakiye\n\n"
+                 "## Normal bağ\n- [[Bahçe]] ⟷ [[Kitap Kulübü]]\n- bulundu: 2026-11-16\nACIKMETIN\n")
+        veri = uret.uret(self.kok, BUGUN)
+        ham = json.dumps(veri, ensure_ascii=False)
+        self.assertNotIn("GIZLIBAGMETNI", ham)
+        self.assertNotIn("GIZLIDESENMETNI", ham)
+        self.assertIn("ACIKMETIN", ham)  # hassas olmayan bağ etkilenmez
+        self.assertTrue([g for g in veri["gizli"] if g["baslik"] == "Para bağı"])  # bağ yine var
+
+    def test_hassas_alandaki_yapilacak_adi_var_metni_yok(self):
+        self.hassas_kur()
+        self.yaz("10 Günlük/2026-11-16.md", "# 2026-11-16\n- [ ] Vergiyi öde [[Bütçe Takibi]]\n")
+        g = self.dugum(uret.uret(self.kok, BUGUN), "gorev:vergiyi öde bütçe takibi")
+        self.assertEqual(g["ad"], "Vergiyi öde Bütçe Takibi")
+        self.assertNotIn("metin", g)
+        self.assertNotIn("sonraki", g)
+
+
+class TestUstSinir(GeciciKasa):
+    def test_fazla_fikir_en_yeniler_kalir(self):
+        for i in range(70):
+            self.yaz(f"40 Fikirler/Fikir {i:02d}.md",
+                     f"---\ndurum: tohum\ntarih: 2026-10-{1 + i // 3:02d}\n---\n# Fikir {i:02d}\n")
+        veri, uyarilar = uret.uret_uyarili(self.kok, BUGUN)
+        self.assertLessEqual(len(veri["dugumler"]), 60)
+        fikirler = {d["id"] for d in veri["dugumler"] if d["tur"] == "fikir"}
+        self.assertIn("Fikir 69", fikirler)
+        self.assertNotIn("Fikir 00", fikirler)
+        self.assertTrue(any("sınırı için çıkarıldı" in u for u in uyarilar))
+
+    def test_unutulmus_yapilacak_fikirden_sonra_duser(self):
+        gunluk = "# 2026-10-27\n" + "".join(f"- [ ] Eski iş {i:02d}\n" for i in range(70))
+        self.yaz("10 Günlük/2026-10-27.md", gunluk)
+        veri = uret.uret(self.kok, BUGUN)
+        self.assertLessEqual(len(veri["dugumler"]), 60)
+        self.assertNotIn("Mavi Kapı", {d["id"] for d in veri["dugumler"]})  # fikir önce düştü
+        taze = {d["id"] for d in veri["dugumler"] if d["tur"] == "gorev"}
+        self.assertIn("gorev:fatura öde", taze)  # taze yapılacak düşmez
+
+    def test_65_proje_hepsi_kalir_ve_uyari(self):
+        sil = ["20 Projeler/Bahçe.md", "20 Projeler/Kitap Kulübü.md"]
+        for g in sil:
+            (self.kok / g).unlink()
+        for i in range(65):
+            self.yaz(f"20 Projeler/Proje {i:02d}.md", f"---\ndurum: aktif\n---\n# Proje {i:02d}\n")
+        veri, uyarilar = uret.uret_uyarili(self.kok, BUGUN)
+        projeler = [d for d in veri["dugumler"] if d["tur"] == "proje"]
+        self.assertEqual(len(projeler), 65)
+        self.assertTrue(any("sınırı aşıldı" in u for u in uyarilar))
+
+
 class TestBozuk(GeciciKasa):
     def test_bos_ve_bozuk_kasa(self):
         bos = Path(self.gecici.name) / "bos"

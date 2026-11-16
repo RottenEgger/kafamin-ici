@@ -138,9 +138,11 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
               "alanlar": [alan] if alan else list(yedek), "metin": "", "sonraki": ""})
 
     # Fikirler
+    fikir_tarihi: dict[str, date] = {}
     for f in kasa.fikirler:
         if kucuk_harf(f.durum) in GORULMEYEN_FIKIR:
             continue
+        fikir_tarihi[f.ad] = f.tarih or date.min  # tarihsiz fikir en eski sayılır
         ekle({"id": f.ad, "ad": f.ad, "tur": "fikir", "durum": "bekliyor",
               "alanlar": baglantidan_alan(kasa.baglantilar.get(f.ad, ())),
               "metin": f.amac or f.kaldigim, "sonraki": f.sonraki})
@@ -157,6 +159,7 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
     # Yapılacaklar ve (bağlantısız) yapılanlar
     proje_adlari = {p.ad for p in gorunen_projeler}
     yapilan_tarihi: dict[str, date] = {}
+    unutulmus_tarihi: dict[str, date] = {}
     yapilanlar = []
     for g in kasa.gorevler:
         yakin = next((h for h in g.linkler if h in proje_adlari), None)
@@ -176,6 +179,7 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
                  "bekliyorGun": bekleyen}
         if bekleyen > UNUTULMUS_GUN:
             dugum["unutulmus"] = True
+            unutulmus_tarihi[g.id] = g.ilk_tarih
         ekle(dugum)
     yapilanlar.sort(key=lambda g: (g.son_tarih, g.id), reverse=True)
     for g in yapilanlar[:EN_FAZLA_YAPILAN]:
@@ -192,9 +196,13 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
         uyarilar.append(f"{GIZLI_AD}: okunamadı ({hata})")
     biten_gorevler = {g.id for g in kasa.gorevler if g.bitti}
 
-    # Düşürme sırası: önce eski kaynaklar, sonra eski yapılanlar.
-    dusurulecek = ([k for k, _ in sorted(kaynak_tarihi.items(), key=lambda t: (t[1], t[0]))]
-                   + [k for k, _ in sorted(yapilan_tarihi.items(), key=lambda t: (t[1], t[0]))])
+    # Düşürme sırası: önce eski kaynaklar, sonra eski yapılanlar, sonra eski fikirler,
+    # en son unutulmuş yapılacaklar. Proje, ders, kara delik ve taze yapılacak hiç düşmez.
+    def eskiden_yeniye(tarihler: dict) -> list[str]:
+        return [k for k, _ in sorted(tarihler.items(), key=lambda t: (t[1], t[0]))]
+
+    dusurulecek = (eskiden_yeniye(kaynak_tarihi) + eskiden_yeniye(yapilan_tarihi)
+                   + eskiden_yeniye(fikir_tarihi) + eskiden_yeniye(unutulmus_tarihi))
 
     def uc_coz(uc: str, kimlikler: set[str]) -> str | None:
         """Ucu bir düğüm kimliğine çevirir; çözülemezse None."""
@@ -229,11 +237,15 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
         dugumler[:] = [d for d in dugumler if d["id"] != atilan]
         dusen += 1
     if dusen:
-        uyarilar.append(f"{dusen} düğüm {EN_FAZLA_DUGUM} sınırı için çıkarıldı (eski kaynak/yapılanlar)")
+        uyarilar.append(f"{dusen} düğüm {EN_FAZLA_DUGUM} sınırı için çıkarıldı (eski kaynak/yapılan/fikir/unutulmuş)")
+    fazla = len(dugumler) + len(cozulen_desenler) - EN_FAZLA_DUGUM
+    if fazla > 0:
+        uyarilar.append(f"{fazla} düğüm: {EN_FAZLA_DUGUM} sınırı aşıldı, düşürülecek başka düğüm yok")
     cozulen_idler = {d["id"] for d in dugumler}
 
     # Kara delikler
     kimlik_ad = {d["id"]: d["ad"] for d in dugumler}
+    hassas_idler = {d["id"] for d in dugumler if set(d["alanlar"]) & hassas}
     gizli_kayitlari = []
     desen_dugumleri = []
     for d, uyeler in cozulen_desenler:
@@ -244,11 +256,14 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
         for u in d.uyeler:
             if uc_coz(u, cozulen_idler) is None:
                 uyarilar.append(f"desen üyesi atlandı ({d.baslik}): uç bulunamadı: {u}")
+        desen_hassas = any(u in hassas_idler for u in uyeler)
+        if desen_hassas:
+            hassas_idler.add(desen_id)
         desen_dugumleri.append({"id": desen_id, "ad": d.baslik, "tur": "karadelik", "durum": "bekliyor",
                                 "alanlar": [], "uyeler": uyeler, "metin": d.metin, "sonraki": ""})
         for u in uyeler:
             gizli_kayitlari.append({"a": desen_id, "b": u, "baslik": "Kara deliğe çekilen: " + kimlik_ad[u],
-                                    "metin": d.metin, "guven": "emin"})
+                                    "metin": "" if desen_hassas else d.metin, "guven": "emin"})
     cozulenler = [c[0] for c in cozulen_desenler]
     for d in desenler:
         if not any(d is c for c in cozulenler):
@@ -268,7 +283,8 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
             continue
         if a == c:
             continue
-        gizli_kayitlari.append({"a": a, "b": c, "baslik": b.baslik, "metin": b.metin, "guven": b.guven})
+        gizli_metin = "" if {a, c} & hassas_idler else b.metin  # hassas uçlu bağın açıklaması gitmez
+        gizli_kayitlari.append({"a": a, "b": c, "baslik": b.baslik, "metin": gizli_metin, "guven": b.guven})
 
     # Alan merkezleri ve yerleşim
     tablo = alan_tablosu_oku(tablo_yolu) if tablo_yolu else {}
@@ -278,10 +294,6 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
     yerlestir(dugumler, merkezler)
 
     # Çıktı düğümleri
-    hassas_idler = {d["id"] for d in dugumler if set(d["alanlar"]) & hassas}
-    for d in desen_dugumleri:
-        if any(u in hassas_idler for u in d["uyeler"]):
-            hassas_idler.add(d["id"])
     cikti = []
     for d in dugumler:
         o = {"id": d["id"], "ad": d["ad"], "tur": d["tur"], "durum": d["durum"],
