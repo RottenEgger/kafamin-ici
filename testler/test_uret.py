@@ -1,3 +1,5 @@
+import contextlib
+import io
 import json
 import math
 import shutil
@@ -358,6 +360,29 @@ class TestUstSinir(GeciciKasa):
         projeler = [d for d in veri["dugumler"] if d["tur"] == "proje"]
         self.assertEqual(len(projeler), 65)
         self.assertTrue(any("sınırı aşıldı" in u for u in uyarilar))
+
+
+class TestAnaGiris(GeciciKasa):
+    def calistir(self, kasa):
+        cikti = Path(self.gecici.name) / "cikti.json"
+        hata = io.StringIO()
+        with contextlib.redirect_stderr(hata):
+            kod = uret.main([str(kasa), str(cikti)])
+        return kod, cikti, hata.getvalue()
+
+    def test_kasa_klasoru_yoksa_hata(self):
+        kod, cikti, hata = self.calistir(Path(self.gecici.name) / "yok")
+        self.assertEqual(kod, 1)
+        self.assertIn("bulunamadı", hata)
+        self.assertFalse(cikti.exists())
+
+    def test_alan_ve_proje_notu_yoksa_hata(self):
+        bos = Path(self.gecici.name) / "bos"
+        bos.mkdir()
+        kod, cikti, hata = self.calistir(bos)
+        self.assertEqual(kod, 1)
+        self.assertIn("alan ya da proje notu", hata)
+        self.assertFalse(cikti.exists())
 
 
 class TestBozuk(GeciciKasa):

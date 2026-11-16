@@ -352,8 +352,16 @@ def main(argumanlar: list[str]) -> int:
         print("Kullanım: python3 -I araclar/uret.py <kasa> <cikti.json> [--bugun YYYY-AA-GG]", file=sys.stderr)
         return 2
     kok, cikti = Path(yollar[0]).expanduser(), Path(yollar[1])
+    if not kok.is_dir():
+        print(f"Hata: kasa klasörü bulunamadı: {kok}", file=sys.stderr)
+        return 1
     tablo_yolu = Path(__file__).resolve().parent.parent / ".yerel" / "alanlar.json"
     veri, uyarilar = uret_uyarili(kok, bugun, tablo_yolu)
+    # Ne alan ne proje notu okunduysa kasa yanlış yerdedir; boş harita yayınlanmasın
+    if not veri["alanlar"] and not any(d["tur"] == "proje" for d in veri["dugumler"]):
+        print(f"Hata: {kok} içinde alan ya da proje notu bulunamadı; kasa yolu yanlış olabilir. "
+              "Çıktı yazılmadı.", file=sys.stderr)
+        return 1
     cikti.parent.mkdir(parents=True, exist_ok=True)
     cikti.write_text(json.dumps(veri, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     for u in uyarilar:
