@@ -297,7 +297,7 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
     cikti = []
     for d in dugumler:
         o = {"id": d["id"], "ad": d["ad"], "tur": d["tur"], "durum": d["durum"],
-             "x": round(d["x"], 1), "y": round(d["y"], 1), "z": round(d["z"], 1),
+             "x": round(float(d["x"]), 1), "y": round(float(d["y"]), 1), "z": round(float(d["z"]), 1),
              "alan": "Desen" if d["tur"] == "karadelik" else " + ".join(d["alanlar"][:2])}
         if d["id"] not in hassas_idler:  # para/sağlık gibi alanlarda yalnız adlar gider
             o["metin"] = d["metin"]
@@ -323,7 +323,7 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
 
     veri = {
         "tarih": tarih_yazisi(bugun),
-        "alanlar": [{"ad": ad, "x": m[0], "y": m[1], "z": m[2], "renk": m[3]}
+        "alanlar": [{"ad": ad, "x": float(m[0]), "y": float(m[1]), "z": float(m[2]), "renk": m[3]}
                     for ad, m in sorted(merkezler.items())],
         "dugumler": cikti,
         "acik": [list(c) for c in sorted(cift)],

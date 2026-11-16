@@ -176,6 +176,14 @@ class TestAlanlar(GeciciKasa):
         ids = {d["id"] for d in uret.uret(self.kok, BUGUN)["dugumler"]}
         self.assertNotIn("Bahçe", ids)
 
+    def test_ilk_ve_sonraki_calisma_ayni(self):
+        tablo = self.kok.parent / "yeni_alanlar.json"
+        self.assertFalse(tablo.exists())
+        v1 = uret.uret(self.kok, BUGUN, tablo)
+        self.assertTrue(tablo.exists())
+        v2 = uret.uret(self.kok, BUGUN, tablo)
+        self.assertEqual(json.dumps(v1, sort_keys=True), json.dumps(v2, sort_keys=True))
+
     def test_yapisik_alan_tablosu(self):
         tablo = self.kok.parent / "alanlar.json"
         tablo.write_text(json.dumps({"Hayat": [111, 222, 3, "#123456"]}), encoding="utf-8")

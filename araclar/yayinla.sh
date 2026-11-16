@@ -11,9 +11,6 @@ GONDER="${GONDER:-1}"
 mkdir -p .yerel docs
 
 # 1) Kasadan düz veriyi üret (yalnızca bu bilgisayarda kalır).
-# İlk çalışmada yeni alanlar kaydedilir; çıktı sayı biçimi (12 / 12.0) ikinci
-# çalışmada değişir. Çıktı kararlı olsun diye iki kez üretilir (ikincisi geçerli).
-python3 -I araclar/uret.py "$KASA" .yerel/veri.json >/dev/null 2>&1 || true
 python3 -I araclar/uret.py "$KASA" .yerel/veri.json
 
 # 2) Özet aynıysa çık.
