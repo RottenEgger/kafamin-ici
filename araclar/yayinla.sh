@@ -73,7 +73,18 @@ if [ "$GONDER" != "0" ]; then
   if ! git pull --rebase -q origin main; then
     git rebase --abort 2>/dev/null || true
     echo "Hata: GitHub'dan güncel hâl alınamadı: bağlantı sorunu ya da çakışma. Yayın yapılmadı, yerel kayıt duruyor." >&2
-    echo "Bu bilgisayardan başka yerde bu depoda değişiklik yapmadıysan: git -C \"$(pwd)\" reset --hard origin/main  ve sonra betiği yeniden çalıştır." >&2
+    echo "Hata 'Authentication'/'Permission' içeriyorsa sorun giriş izni: gh auth status ile bak." >&2
+    # Yerelde gönderilmemiş commit'ler yalnız otomatik veri kaydıysa sıfırlamak güvenlidir
+    YEREL="$(git log --format=%s origin/main..main 2>/dev/null || true)"
+    if [ -n "$YEREL" ] && [ -z "$(printf '%s\n' "$YEREL" | grep -vx 'Veri güncellendi' || true)" ]; then
+      echo "Gönderilmemiş yerel kayıtlar:" >&2
+      git log --oneline origin/main..main >&2
+      echo "Bunlar yalnız otomatik veri kayıtları; silmek güvenli. Başka yerde bu depoda değişiklik yapmadıysan: git -C \"$(pwd)\" reset --hard origin/main  ve sonra betiği yeniden çalıştır." >&2
+    elif [ -n "$YEREL" ]; then
+      echo "Gönderilmemiş yerel kayıtlar:" >&2
+      git log --oneline origin/main..main >&2
+      echo "Yerelde gönderilmemiş başka değişiklikler var; reset yapma, Claude'dan yardım iste." >&2
+    fi
     exit 1
   fi
   git push -q origin main
