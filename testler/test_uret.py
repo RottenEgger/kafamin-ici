@@ -407,6 +407,26 @@ class TestUstSinir(GeciciKasa):
         self.assertTrue(any("sınırı aşıldı" in u for u in uyarilar))
 
 
+class TestKucukDuzeltmeler(GeciciKasa):
+    def test_proje_metni_temiz(self):
+        self.yaz("20 Projeler/Temiz.md",
+                 "---\ndurum: aktif\n---\n# Temiz\n\n**Amaç:** [[Bahçe|bahçeyi]] **güzelleştir**\n"
+                 "**Kaldığım yer:** [[Hayat]] notu\n")
+        m = self.dugum(uret.uret(self.kok, BUGUN), "Temiz")["metin"]
+        self.assertNotIn("[[", m)
+        self.assertNotIn("**", m)
+        self.assertTrue(m.startswith("bahçeyi güzelleştir"))
+
+    def test_atlanan_kopya_fikir_projeyi_dusurmez(self):
+        # "Bahçe" fikri proje ile aynı kimlikte: atlanır, tarihi düşürme listesine girmemeli
+        self.yaz("40 Fikirler/Bahçe.md", "---\ndurum: tohum\ntarih: 2020-01-01\n---\n# Bahçe\n")
+        for i in range(70):
+            self.yaz(f"40 Fikirler/Fikir {i:02d}.md",
+                     f"---\ndurum: tohum\ntarih: 2026-10-{1 + i // 3:02d}\n---\n# Fikir {i:02d}\n")
+        veri = uret.uret(self.kok, BUGUN)
+        self.assertEqual(self.dugum(veri, "Bahçe")["tur"], "proje")
+
+
 class TestGizliGuven(GeciciKasa):
     def test_desen_tahmin_guveni_gizli_kayda_gecer(self):
         self.yaz("50 Kaynaklar/Gizli bağlantılar.md",

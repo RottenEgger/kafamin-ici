@@ -41,6 +41,8 @@ def son_hafta_mi(gun, bugun: date) -> bool:
 
 
 def temiz_metin(metin: str) -> str:
+    metin = re.sub(r"\[\[[^\]|]*\|([^\]]*)\]\]", r"\1", metin)  # [[Hedef|Görünen]] -> Görünen
+    metin = re.sub(r"\[\[([^\]#|]*)#[^\]]*\]\]", r"\1", metin)  # [[Not#Başlık]] -> Not
     for atilacak in ("[[", "]]", "**", "~~"):
         metin = metin.replace(atilacak, "")
     return " ".join(metin.split())
@@ -137,9 +139,9 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
     # Projeler (bitmiş/bırakılmışlar "arsiv" durumuyla gider)
     arsiv_tarihi: dict[str, date] = {}
     for p in kasa.projeler:
-        metin = p.amac or ""
+        metin = temiz_metin(p.amac or "")
         if p.kaldigim:
-            metin = (metin + " Kaldığım yer: " + p.kaldigim).strip()
+            metin = (metin + " Kaldığım yer: " + temiz_metin(p.kaldigim)).strip()
         durum = "arsiv" if arsiv_mi(p) else "bitti" if p.ad in kasa.ilerleyen else "surekli"
         if ekle({"id": p.ad, "ad": p.ad, "tur": "proje", "durum": durum,
                  "alanlar": proje_alani[p.ad], "metin": metin, "sonraki": p.sonraki}) and durum == "arsiv":
@@ -157,10 +159,10 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
     for f in kasa.fikirler:
         if kucuk_harf(f.durum) in GORULMEYEN_FIKIR:
             continue
-        fikir_tarihi[f.ad] = f.tarih or date.min  # tarihsiz fikir en eski sayılır
-        ekle({"id": f.ad, "ad": f.ad, "tur": "fikir", "durum": "bekliyor",
-              "alanlar": baglantidan_alan(kasa.baglantilar.get(f.ad, ())),
-              "metin": f.amac or f.kaldigim, "sonraki": f.sonraki})
+        if ekle({"id": f.ad, "ad": f.ad, "tur": "fikir", "durum": "bekliyor",
+                 "alanlar": baglantidan_alan(kasa.baglantilar.get(f.ad, ())),
+                 "metin": f.amac or f.kaldigim, "sonraki": f.sonraki}):
+            fikir_tarihi[f.ad] = f.tarih or date.min  # tarihsiz fikir en eski sayılır
 
     # Kaynaklar: yalnız son 7 günde eklenenler
     kaynaklar = [k for k in kasa.kaynaklar if son_hafta_mi(k.tarih, bugun)]
