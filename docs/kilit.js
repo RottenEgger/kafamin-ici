@@ -22,11 +22,12 @@ export function b64Oku(metin) {
   return bayt;
 }
 
-// Paroladan AES-GCM-256 anahtarı; dışarı çıkarılamaz (extractable: false)
+// Paroladan AES-GCM-256 anahtarı; dışarı çıkarılamaz (extractable: false).
+// Parola NFC'ye çevrilir: macOS bazen harfleri ayrışık (NFD) verir, aynı parola aynı anahtarı üretsin.
 export async function anahtarTuret(parola, saltB64) {
   const subtle = globalThis.crypto.subtle;
   const ham = await subtle.importKey(
-    "raw", new TextEncoder().encode(parola), "PBKDF2", false, ["deriveKey"]);
+    "raw", new TextEncoder().encode(parola.normalize("NFC")), "PBKDF2", false, ["deriveKey"]);
   return subtle.deriveKey(
     { name: "PBKDF2", hash: "SHA-256", salt: b64Oku(saltB64), iterations: TUR },
     ham,

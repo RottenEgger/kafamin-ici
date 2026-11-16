@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { anahtarTuret, b64Yaz } from "../docs/kilit.js";
+import { anahtarTuret, b64Yaz, b64Oku } from "../docs/kilit.js";
 
 export async function sifrele(duzMetin, parola, saltB64) {
   const anahtar = await anahtarTuret(parola, saltB64);
@@ -16,7 +16,15 @@ export async function sifrele(duzMetin, parola, saltB64) {
 
 // Salt dosyası yoksa 16 rastgele bayt üretip yazar; varsa okur
 function saltAl(yol) {
-  if (existsSync(yol)) return readFileSync(yol, "utf8").trim();
+  if (existsSync(yol)) {
+    const salt = readFileSync(yol, "utf8").trim();
+    let uzunluk = -1;
+    try { uzunluk = b64Oku(salt).length; } catch { /* geçersiz base64 */ }
+    if (uzunluk !== 16) {
+      throw new Error(`salt dosyası geçersiz (${yol}): tam 16 bayt olmalı. Dosyayı elle düzeltmeyin; silip yeniden üretin.`);
+    }
+    return salt;
+  }
   const salt = b64Yaz(crypto.getRandomValues(new Uint8Array(16)));
   mkdirSync(dirname(yol), { recursive: true });
   writeFileSync(yol, salt + "\n");
