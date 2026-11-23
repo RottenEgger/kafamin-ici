@@ -34,9 +34,8 @@ Parolayı Terminal sorar ve ekrana yazmaz; macOS Anahtar Zinciri'ne kaydedilir.
 Uzun bir parola cümlesi seç ve güvenli bir yere de kaydet. Unutursan veri açılamaz.
 Parolada Türkçe harf varsa Anahtar Zinciri onu onaltılık (hex) metin olarak verir; şifreleme betiği bunu otomatik düz parolaya çevirir.
 
-Kaydedilen anahtar tarayıcıda, `rottenegger.github.io` kaynağının (origin) tamamı için saklanır;
-yani aynı kaynaktaki başka siteler de bu anahtara erişebilir. Özel bir alan adı (custom domain)
-kullanmak bunu ayırır; ileride yapılabilir.
+Site kendi alan adında (`docs/CNAME`) yayınlanır; kaydedilen anahtar tarayıcıda yalnız bu
+kaynak (origin) için saklanır, aynı GitHub Pages hesabındaki başka sitelerle paylaşılmaz.
 
 ## Yayınlama
 
