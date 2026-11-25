@@ -2,7 +2,7 @@
 // Örnek veri uydurmadır.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { odakModeli, halkaKonumlari } from "../docs/odak.js";
+import { odakModeli, halkaKonumlari, gorunenBaglar } from "../docs/odak.js";
 
 const V = {
   alanlar: [
@@ -34,7 +34,7 @@ test("bilinmeyen id → null", () => {
 test("merkez alanları", () => {
   assert.deepEqual(odakModeli(V, "A").merkez, {
     id: "A", ad: "Robot", tur: "proje", renk: "#5fd4ff",
-    son: { tarih: "2026-11-16", metin: "Motor döndü" }, sonGun: 0, sonraki: "Pili tak", metin: "Amaç",
+    son: { tarih: "2026-11-16", metin: "Motor döndü" }, sonGun: 0, sonraki: "Pili tak", metin: "Amaç", gizli: false,
   });
 });
 
@@ -102,4 +102,17 @@ test("halka: 1..24 öğede hiçbir iki nokta 0.5'ten yakın değil", () => {
       for (let j = i + 1; j < p.length; j++)
         assert.ok(Math.hypot(p[i].x - p[j].x, p[i].y - p[j].y) >= 0.5, `n=${n} i=${i} j=${j}`);
   }
+});
+
+test("merkez gizli bayrağı: yalnız metni hiç gönderilmeyen (hassas) öğede", () => {
+  assert.equal(odakModeli(V, "Yalnız").merkez.gizli, true);
+  assert.equal(odakModeli(V, "B").merkez.gizli, false); // metin boş ama hassas değil
+});
+
+test("kümede en çok 10 bağ çizilir, kalanı sayılır (sıra korunur)", () => {
+  const baglar = Array.from({ length: 14 }, (_, i) => ({ id: "b" + i }));
+  const { gorunen, kalan } = gorunenBaglar(baglar);
+  assert.deepEqual(gorunen.map((b) => b.id), baglar.slice(0, 10).map((b) => b.id));
+  assert.equal(kalan, 4);
+  assert.deepEqual(gorunenBaglar(baglar.slice(0, 3)), { gorunen: baglar.slice(0, 3), kalan: 0 });
 });

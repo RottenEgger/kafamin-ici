@@ -24,7 +24,7 @@ if [ "${1:-}" = "--gercek" ]; then
   TABLO=".yerel/onizleme-alanlar.json"
   if [ -f "$ANA_TABLO" ]; then cp "$ANA_TABLO" "$TABLO"; else rm -f "$TABLO"; fi
 else
-  KASA="testler/ornek_kasa"
+  KASA="${KASA:-testler/ornek_kasa}"  # deneme için başka bir uydurma kasa verilebilir
   TABLO=""
 fi
 # uret.uret_uyarili doğrudan çağrılır: gerçek alan tablosu (.yerel/alanlar.json) değişmesin.

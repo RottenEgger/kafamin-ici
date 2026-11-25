@@ -51,9 +51,18 @@ export function odakModeli(veri, id) {
       sonGun: merkez.sonGun ?? null,
       sonraki: merkez.sonraki || null,
       metin: merkez.metin || "",
+      gizli: !("metin" in merkez), // hassas alan: metin hiç gönderilmez (boş metin değil)
     },
     baglar: [...baglar.values()].sort((x, y) => sira(x) - sira(y) || x.ad.localeCompare(y.ad, "tr")),
   };
+}
+
+// Kümede en çok bu kadar bağ çizilir; fazlası çekmecede listelenir.
+// (İkinci halka telefonda etiketleri üst üste bindiriyordu.)
+export const KUMEDE_EN_FAZLA = 10;
+
+export function gorunenBaglar(baglar, en = KUMEDE_EN_FAZLA) {
+  return { gorunen: baglar.slice(0, en), kalan: Math.max(0, baglar.length - en) };
 }
 
 // Halka yerleşimi (birim çember koordinatları). İlk nokta tam tepede, saat yönünde eşit aralıklı.

@@ -173,6 +173,8 @@ body.odakta .ust, body.odakta main{filter:blur(3px) brightness(.45);transition:f
 .halka-dalga.ikinci{animation-delay:.5s}
 @keyframes dalga{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.7);opacity:0}}
 .bag-yok{position:absolute;top:110px;white-space:nowrap;color:var(--soluk);font-size:13px;margin:0}
+.bag-fazla{position:absolute;top:104px;white-space:nowrap;font-size:12px;color:var(--altin);
+  border:1px solid rgba(244,200,106,.5);border-radius:999px;padding:3px 10px;background:var(--gece)}
 
 /* ---------- alt çekmece (21st "Drawer"dan uyarlandı) ---------- */
 .cekmece-arka{position:fixed;inset:0;z-index:11;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;

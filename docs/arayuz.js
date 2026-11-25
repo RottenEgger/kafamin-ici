@@ -1,7 +1,7 @@
 // Arayüz: pano modelini sayfaya çizer (özet → takıldığım yerler → pano).
 // Veriden gelen her yazı textContent ile girer (innerHTML yok): not metinleri güvenilmez sayılır.
 import { panoModeli, suz } from "./pano.js";
-import { odakModeli, halkaKonumlari } from "./odak.js";
+import { odakModeli, halkaKonumlari, gorunenBaglar } from "./odak.js";
 import { cekmeceKur } from "./cekmece.js";
 
 // Küçük yardımcı: <etiket class="sinif">metin</etiket>
@@ -86,7 +86,7 @@ function cekmeceIcerigi(model, secilenBag) {
     parca.append(son);
   }
   if (merkez.tur === "proje") {
-    parca.append(el("p", "ayrinti-sira", "→ Sıradaki: " + (merkez.sonraki || (merkez.metin ? "—" : "🔒 gizli"))));
+    parca.append(el("p", "ayrinti-sira", "→ Sıradaki: " + (merkez.gizli ? "🔒 gizli" : merkez.sonraki || "—")));
   }
   if (merkez.tur !== "proje" && merkez.metin) parca.append(el("p", "ayrinti-metin", merkez.metin));
 
@@ -118,7 +118,8 @@ function cekmeceIcerigi(model, secilenBag) {
 function odakCiz(id, secilenBag) {
   const model = odakModeli(VERI, id);
   if (!model) return;
-  const { merkez, baglar } = model;
+  const { merkez } = model;
+  const { gorunen: baglar, kalan } = gorunenBaglar(model.baglar);
   const sahne = odakKatmani.querySelector(".odak-sahne");
   sahne.replaceChildren();
   odakKatmani.setAttribute("aria-label", merkez.ad + " ve bağları");
@@ -193,6 +194,12 @@ function odakCiz(id, secilenBag) {
   kure.onclick = () => cekmece.ac(cekmeceIcerigi(model, null), { tam: true });
   m.append(kure);
   if (!baglar.length) m.append(el("p", "bag-yok", "Henüz bağ yok"));
+  if (kalan) {
+    const fazla = el("button", "bag-fazla", `+${kalan} bağ daha`);
+    fazla.type = "button";
+    fazla.onclick = () => cekmece.ac(cekmeceIcerigi(model, null), { tam: true });
+    m.append(fazla);
+  }
   sahne.append(m);
 
   // açılış: önce merkezde çizilsin (reflow), sonra düğümler yerine kaysın
