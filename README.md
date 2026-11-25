@@ -1,17 +1,22 @@
 # Kafamın İçi
 
-Kişisel, şifreli bir 3B gökyüzü haritası. Notlardan üretilen veri tarayıcıda
-parolayla açılır; parola olmadan sayfada yalnızca bir kilit ekranı görünür.
+Kişisel, şifreli bir pano: üstte kısa bir özet, altında her iş için
+"son yaptığın → iş → sıradaki adım" satırları. Bir işe dokununca o iş ortaya gelir,
+bağlı işler etrafında dizilir; alttan açılan çekmecede bağların nedeni yazar.
+Notlardan üretilen veri tarayıcıda parolayla açılır; parola olmadan sayfada yalnızca bir kilit ekranı görünür.
+Derleme adımı ve dış kütüphane yok: düz HTML, CSS ve JavaScript modülleri (`docs/`).
 Bu depodaki veri dosyası (`docs/veri.sifreli.json`) şifrelidir, içeriği okunamaz.
 
-## Yerelde açma
+## Yerelde açma (önizleme)
 
 ```
-cd docs
-python3 -m http.server 8000
+bash araclar/onizle.sh
+python3 -m http.server 8001 -d .yerel/onizleme
 ```
 
-Sonra tarayıcıda `http://localhost:8000` adresini aç.
+Sonra tarayıcıda `http://localhost:8001` adresini aç; deneme parolası `onizleme`.
+Önizleme testteki uydurma kasayı kullanır, hiçbir şey yayınlamaz.
+`bash araclar/onizle.sh --gercek` kendi kasandan üretir; o da yalnız bu bilgisayarda kalır.
 
 ## Testler
 
