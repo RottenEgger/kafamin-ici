@@ -7,7 +7,7 @@ const KABUK = "kafamin-kabuk-" + SURUM;
 const VERI = "kafamin-veri"; // sürümden bağımsız: sürüm değişince son veri kaybolmasın
 const VERI_DOSYASI = "veri.sifreli.json";
 
-const YEREL = ["./", "index.html", "stil.css", "kilit.js", "arayuz.js", "pano.js", "odak.js",
+const YEREL = ["./", "index.html", "stil.css", "kilit.js", "arayuz.js", "pano.js", "odak.js", "cekmece.js",
   "manifest.webmanifest", "ikon-180.png", "ikon-512.png"];
 const FONT_SUNUCULARI = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
