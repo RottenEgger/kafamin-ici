@@ -22,7 +22,6 @@ from yerlesim import alan_merkezleri, alan_tablosu_oku, yerlestir  # noqa: E402
 
 AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
          "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
-EN_FAZLA_DUGUM = 60
 EN_FAZLA_YAPILAN = 8  # bağlantısız yapılanlar (küçük yıldız) en çok 8
 UNUTULMUS_GUN = 14  # bundan eski açık iş "unutulmuş olabilir"
 GOSTERME_GUN = 30  # bundan eski açık iş hiç gösterilmez
@@ -130,16 +129,13 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
         return True
 
     # Projeler (bitmiş/bırakılmışlar "arsiv" durumuyla gider)
-    arsiv_tarihi: dict[str, date] = {}
     for p in kasa.projeler:
         metin = temiz_metin(p.amac or "")
         if p.kaldigim:
             metin = (metin + " Kaldığım yer: " + temiz_metin(p.kaldigim)).strip()
         durum = "arsiv" if arsiv_mi(p) else "bitti" if p.ad in kasa.ilerleyen else "surekli"
-        if ekle({"id": p.ad, "ad": p.ad, "tur": "proje", "durum": durum,
-                 "alanlar": proje_alani[p.ad], "metin": metin, "sonraki": p.sonraki,
-                 "son": p.son}) and durum == "arsiv":
-            arsiv_tarihi[p.ad] = p.tarih or date.min
+        ekle({"id": p.ad, "ad": p.ad, "tur": "proje", "durum": durum,
+              "alanlar": proje_alani[p.ad], "metin": metin, "sonraki": p.sonraki, "son": p.son})
 
     # Dersler
     ders_yeri = ders_alanlari(kok)
@@ -149,28 +145,22 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
               "alanlar": [alan] if alan else list(yedek), "metin": "", "sonraki": ""})
 
     # Fikirler
-    fikir_tarihi: dict[str, date] = {}
     for f in kasa.fikirler:
         if kucuk_harf(f.durum) in GORULMEYEN_FIKIR:
             continue
-        if ekle({"id": f.ad, "ad": f.ad, "tur": "fikir", "durum": "bekliyor",
-                 "alanlar": baglantidan_alan(kasa.baglantilar.get(f.ad, ())),
-                 "metin": f.amac or f.kaldigim, "sonraki": f.sonraki}):
-            fikir_tarihi[f.ad] = f.tarih or date.min  # tarihsiz fikir en eski sayılır
+        ekle({"id": f.ad, "ad": f.ad, "tur": "fikir", "durum": "bekliyor",
+              "alanlar": baglantidan_alan(kasa.baglantilar.get(f.ad, ())),
+              "metin": f.amac or f.kaldigim, "sonraki": f.sonraki})
 
     # Kaynaklar: yalnız son 7 günde eklenenler
     kaynaklar = [k for k in kasa.kaynaklar if son_hafta_mi(k.tarih, bugun)]
-    kaynak_tarihi: dict[str, date] = {}
     for k in kaynaklar:
-        if ekle({"id": k.ad, "ad": k.ad, "tur": "kaynak", "durum": "surekli",
-                 "alanlar": baglantidan_alan(kasa.baglantilar.get(k.ad, ())),
-                 "metin": k.amac or k.kaldigim, "sonraki": ""}):
-            kaynak_tarihi[k.ad] = k.tarih
+        ekle({"id": k.ad, "ad": k.ad, "tur": "kaynak", "durum": "surekli",
+              "alanlar": baglantidan_alan(kasa.baglantilar.get(k.ad, ())),
+              "metin": k.amac or k.kaldigim, "sonraki": ""})
 
     # Yapılacaklar ve (bağlantısız) yapılanlar
     proje_adlari = {p.ad for p in gorunen_projeler}
-    yapilan_tarihi: dict[str, date] = {}
-    unutulmus_tarihi: dict[str, date] = {}
     yapilanlar = []
     for g in kasa.gorevler:
         yakin = next((h for h in g.linkler if h in proje_adlari), None)
@@ -190,14 +180,12 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
                  "bekliyorGun": bekleyen}
         if bekleyen > UNUTULMUS_GUN:
             dugum["unutulmus"] = True
-            unutulmus_tarihi[g.id] = g.ilk_tarih
         ekle(dugum)
     yapilanlar.sort(key=lambda g: (g.son_tarih, g.id), reverse=True)
     for g in yapilanlar[:EN_FAZLA_YAPILAN]:
-        if ekle({"id": g.id, "ad": kisalt(temiz_metin(g.metin)), "tur": "gorev", "durum": "bitti",
-                 "alanlar": [h for h in g.linkler if h in alan_adlari][:1] or list(yedek), "yakin": None,
-                 "metin": temiz_metin(g.metin), "sonraki": ""}):
-            yapilan_tarihi[g.id] = g.son_tarih
+        ekle({"id": g.id, "ad": kisalt(temiz_metin(g.metin)), "tur": "gorev", "durum": "bitti",
+              "alanlar": [h for h in g.linkler if h in alan_adlari][:1] or list(yedek), "yakin": None,
+              "metin": temiz_metin(g.metin), "sonraki": ""})
 
     # Gizli bağlantılar ve desenler
     try:
@@ -206,14 +194,6 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
         baglar, desenler = [], []
         uyarilar.append(f"{GIZLI_AD}: okunamadı ({hata})")
     biten_gorevler = {g.id for g in kasa.gorevler if g.bitti}
-
-    # Düşürme sırası: önce arşivdeki projeler, sonra eski kaynaklar, sonra eski yapılanlar, sonra eski fikirler,
-    # en son unutulmuş yapılacaklar. Etkin proje, ders, kara delik ve taze yapılacak hiç düşmez.
-    def eskiden_yeniye(tarihler: dict) -> list[str]:
-        return [k for k, _ in sorted(tarihler.items(), key=lambda t: (t[1], t[0]))]
-
-    dusurulecek = (eskiden_yeniye(arsiv_tarihi) + eskiden_yeniye(kaynak_tarihi) + eskiden_yeniye(yapilan_tarihi)
-                   + eskiden_yeniye(fikir_tarihi) + eskiden_yeniye(unutulmus_tarihi))
 
     def uc_coz(uc: str, kimlikler: set[str]) -> str | None:
         """Ucu bir düğüm kimliğine çevirir; çözülemezse None."""
@@ -238,20 +218,8 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
                 sonuc.append((d, uyeler))
         return sonuc
 
-    dusen = 0
-    while True:
-        kimlikler = {d["id"] for d in dugumler}
-        cozulen_desenler = desenleri_coz(kimlikler)
-        if len(dugumler) + len(cozulen_desenler) <= EN_FAZLA_DUGUM or not dusurulecek:
-            break
-        atilan = dusurulecek.pop(0)
-        dugumler[:] = [d for d in dugumler if d["id"] != atilan]
-        dusen += 1
-    if dusen:
-        uyarilar.append(f"{dusen} düğüm {EN_FAZLA_DUGUM} sınırı için çıkarıldı (eski kaynak/yapılan/fikir/unutulmuş)")
-    fazla = len(dugumler) + len(cozulen_desenler) - EN_FAZLA_DUGUM
-    if fazla > 0:
-        uyarilar.append(f"{fazla} düğüm: {EN_FAZLA_DUGUM} sınırı aşıldı, düşürülecek başka düğüm yok")
+    # Düğüm sayısı sınırı yok: pano kaydırılır (eski 3B haritadaki 60 sınırı kalktı).
+    cozulen_desenler = desenleri_coz({d["id"] for d in dugumler})
     cozulen_idler = {d["id"] for d in dugumler}
 
     # Kara delikler

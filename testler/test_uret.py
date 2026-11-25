@@ -183,17 +183,9 @@ class TestAlanlar(GeciciKasa):
         self.assertEqual(self.dugum(veri, "Kitap Kulübü")["durum"], "arsiv")
         self.assertNotIn("Bahçe", veri["buHafta"])
 
-    def test_arsiv_projeler_ilk_dusen_katman(self):
-        for i in range(6):
-            self.yaz(f"20 Projeler/Eski {i}.md", f"---\ndurum: bitti\ntarih: 2026-0{i + 1}-01\n---\n# Eski {i}\n")
-        for i in range(60):  # 60 fikir + 6 arşiv proje sınırı aşar
-            self.yaz(f"40 Fikirler/F {i:02d}.md", f"---\ndurum: tohum\ntarih: 2026-10-{1 + i // 3:02d}\n---\n# F {i:02d}\n")
-        veri, _ = uret.uret_uyarili(self.kok, BUGUN)
-        self.assertLessEqual(len(veri["dugumler"]), 60)
-        arsiv = {d["id"] for d in veri["dugumler"] if d["durum"] == "arsiv"}
-        fikir = [d for d in veri["dugumler"] if d["tur"] == "fikir"]
-        self.assertTrue(len(fikir) >= 50)  # önce arşiv gitti, fikirler dokunulmadı
-        self.assertNotIn("Eski 0", arsiv)  # en eski arşiv önce düşer
+    def test_arsiv_proje_yine_arsiv_durumuyla_gelir(self):
+        self.yaz("20 Projeler/Eski.md", "---\ndurum: bitti\n---\n# Eski\n")
+        self.assertEqual(self.dugum(uret.uret(self.kok, BUGUN), "Eski")["durum"], "arsiv")
 
     def test_ilk_ve_sonraki_calisma_ayni(self):
         tablo = self.kok.parent / "yeni_alanlar.json"
@@ -285,34 +277,24 @@ class TestBaglar(GeciciKasa):
 
 
 class TestSinirlar(GeciciKasa):
-    def test_en_fazla_60(self):
-        for i in range(80):
-            self.yaz(f"50 Kaynaklar/Kaynak {i:02d}.md", f"---\ntarih: 2026-11-{10 + i % 7:02d}\n---\n# Kaynak {i}\n")
-        veri = uret.uret(self.kok, BUGUN)
-        self.assertLessEqual(len(veri["dugumler"]), 60)
-        # kaynaklar önce düşer: yapılan hâlâ duruyor, en yeni kaynaklar kalmış
-        self.assertIn("gorev:kitabı bitir", {d["id"] for d in veri["dugumler"]})
-        kaynaklar = [d["id"] for d in veri["dugumler"] if d["tur"] == "kaynak"]
-        self.assertTrue(kaynaklar)
+    """Pano kaydığı için düğüm sayısı sınırı yok; tür kuralları (7 gün, 30 gün, en çok 8 yapılan) duruyor."""
 
-    def test_yapilanlar_sonra_duser(self):
-        for i in range(51):
-            self.yaz(f"40 Fikirler/Fikir {i:02d}.md", f"---\ndurum: tohum\n---\n# Fikir {i}\n")
-        veri = uret.uret(self.kok, BUGUN)
-        self.assertLessEqual(len(veri["dugumler"]), 60)
-        turler = [(d["tur"], d["durum"]) for d in veri["dugumler"]]
-        self.assertNotIn("kaynak", [t for t, _ in turler])
-        self.assertNotIn(("gorev", "bitti"), turler)
-        self.assertEqual(sum(1 for t, _ in turler if t == "fikir"), 52)  # fikirler düşmez
-
-    def test_dusen_dugumun_baglari_da_gider(self):
+    def test_sinir_yok_hepsi_kalir(self):
         for i in range(80):
             self.yaz(f"50 Kaynaklar/Kaynak {i:02d}.md",
-                     f"---\ntarih: 2026-11-16\n---\n# Kaynak {i}\n\nİlgili: [[Bahçe]]\n")
+                     f"---\ntarih: 2026-11-{10 + i % 7:02d}\n---\n# Kaynak {i}\n\nİlgili: [[Bahçe]]\n")
+        veri, uyarilar = uret.uret_uyarili(self.kok, BUGUN)
+        self.assertEqual(sum(1 for d in veri["dugumler"] if d["tur"] == "kaynak"), 81)  # 80 + Yeni Kaynak
+        self.assertFalse(any("sınır" in u for u in uyarilar))
+        self.assertTrue(any("Kaynak 79" in cift for cift in veri["acik"]))
+
+    def test_cok_fikir_ve_proje_hepsi_kalir(self):
+        for i in range(70):
+            self.yaz(f"40 Fikirler/Fikir {i:02d}.md", f"---\ndurum: tohum\n---\n# Fikir {i:02d}\n")
+            self.yaz(f"20 Projeler/Proje {i:02d}.md", f"---\ndurum: aktif\n---\n# Proje {i:02d}\n")
         veri = uret.uret(self.kok, BUGUN)
-        kimlikler = {d["id"] for d in veri["dugumler"]}
-        for a, b in veri["acik"]:
-            self.assertTrue(a in kimlikler and b in kimlikler)
+        self.assertEqual(sum(1 for d in veri["dugumler"] if d["tur"] == "fikir"), 71)
+        self.assertEqual(sum(1 for d in veri["dugumler"] if d["tur"] == "proje"), 72)
 
 
 class TestHassasSizinti(GeciciKasa):
@@ -374,39 +356,6 @@ class TestHassasSizinti(GeciciKasa):
         self.yaz("10 Günlük/2026-11-16.md", "# 2026-11-16\n- [ ] [[Para]] kira 900 öde\n")
         veri = uret.uret(self.kok, BUGUN)
         self.assertNotIn("900", json.dumps(veri, ensure_ascii=False))
-
-
-class TestUstSinir(GeciciKasa):
-    def test_fazla_fikir_en_yeniler_kalir(self):
-        for i in range(70):
-            self.yaz(f"40 Fikirler/Fikir {i:02d}.md",
-                     f"---\ndurum: tohum\ntarih: 2026-10-{1 + i // 3:02d}\n---\n# Fikir {i:02d}\n")
-        veri, uyarilar = uret.uret_uyarili(self.kok, BUGUN)
-        self.assertLessEqual(len(veri["dugumler"]), 60)
-        fikirler = {d["id"] for d in veri["dugumler"] if d["tur"] == "fikir"}
-        self.assertIn("Fikir 69", fikirler)
-        self.assertNotIn("Fikir 00", fikirler)
-        self.assertTrue(any("sınırı için çıkarıldı" in u for u in uyarilar))
-
-    def test_unutulmus_yapilacak_fikirden_sonra_duser(self):
-        gunluk = "# 2026-10-27\n" + "".join(f"- [ ] Eski iş {i:02d}\n" for i in range(70))
-        self.yaz("10 Günlük/2026-10-27.md", gunluk)
-        veri = uret.uret(self.kok, BUGUN)
-        self.assertLessEqual(len(veri["dugumler"]), 60)
-        self.assertNotIn("Mavi Kapı", {d["id"] for d in veri["dugumler"]})  # fikir önce düştü
-        taze = {d["id"] for d in veri["dugumler"] if d["tur"] == "gorev"}
-        self.assertIn("gorev:fatura öde", taze)  # taze yapılacak düşmez
-
-    def test_65_proje_hepsi_kalir_ve_uyari(self):
-        sil = ["20 Projeler/Bahçe.md", "20 Projeler/Kitap Kulübü.md"]
-        for g in sil:
-            (self.kok / g).unlink()
-        for i in range(65):
-            self.yaz(f"20 Projeler/Proje {i:02d}.md", f"---\ndurum: aktif\n---\n# Proje {i:02d}\n")
-        veri, uyarilar = uret.uret_uyarili(self.kok, BUGUN)
-        projeler = [d for d in veri["dugumler"] if d["tur"] == "proje"]
-        self.assertEqual(len(projeler), 65)
-        self.assertTrue(any("sınırı aşıldı" in u for u in uyarilar))
 
 
 class TestSon(GeciciKasa):
