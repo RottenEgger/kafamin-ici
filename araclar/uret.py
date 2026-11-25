@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gizli import oku_gizli  # noqa: E402
 from kasa import (  # noqa: E402
     GIZLI_AD, SON_GUN, dersleri_bul, kimlik, kucuk_harf, md_dosyalari, oku_frontmatter, oku_kasa,
+    temiz_metin,
 )
 from yerlesim import alan_merkezleri, alan_tablosu_oku, yerlestir  # noqa: E402
 
@@ -38,14 +39,6 @@ def tarih_yazisi(gun: date) -> str:
 def son_hafta_mi(gun, bugun: date) -> bool:
     """kasa.py'deki "son 7 gün" kuralının aynısı."""
     return gun is not None and 0 <= (bugun - gun).days < SON_GUN
-
-
-def temiz_metin(metin: str) -> str:
-    metin = re.sub(r"\[\[[^\]|]*\|([^\]]*)\]\]", r"\1", metin)  # [[Hedef|Görünen]] -> Görünen
-    metin = re.sub(r"\[\[([^\]#|]*)#[^\]]*\]\]", r"\1", metin)  # [[Not#Başlık]] -> Not
-    for atilacak in ("[[", "]]", "**", "~~"):
-        metin = metin.replace(atilacak, "")
-    return " ".join(metin.split())
 
 
 def rakam_maskele(metin: str) -> str:
@@ -144,7 +137,8 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
             metin = (metin + " Kaldığım yer: " + temiz_metin(p.kaldigim)).strip()
         durum = "arsiv" if arsiv_mi(p) else "bitti" if p.ad in kasa.ilerleyen else "surekli"
         if ekle({"id": p.ad, "ad": p.ad, "tur": "proje", "durum": durum,
-                 "alanlar": proje_alani[p.ad], "metin": metin, "sonraki": p.sonraki}) and durum == "arsiv":
+                 "alanlar": proje_alani[p.ad], "metin": metin, "sonraki": p.sonraki,
+                 "son": p.son}) and durum == "arsiv":
             arsiv_tarihi[p.ad] = p.tarih or date.min
 
     # Dersler
@@ -338,6 +332,12 @@ def uret_uyarili(kok: Path, bugun: date, tablo_yolu: Path | None = None) -> tupl
         for anahtar in ("bekliyorGun", "unutulmus"):
             if anahtar in d:
                 o[anahtar] = d[anahtar]
+        if d.get("son"):  # projenin son günlük satırı (pano "Yaptım" sütunu)
+            gun, son_metin = d["son"]
+            o["son"] = {"tarih": gun.isoformat()}
+            if d["id"] not in hassas_idler:  # hassas alanda yalnız tarih gider
+                o["son"]["metin"] = son_metin
+            o["sonGun"] = (bugun - gun).days
         cikti.append(o)
 
     # Açık bağlantılar: notlardaki [[bağlantılar]] (iki ucu da düğüm olanlar)

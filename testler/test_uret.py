@@ -84,6 +84,8 @@ class TestSema(GeciciKasa):
             self.assertTrue({"id", "ad", "tur", "durum", "x", "y", "z", "alan"} <= set(d))
             self.assertIn(d["durum"], {"bitti", "bekliyor", "surekli"})
             self.assertFalse({"alanlar", "yakin", "uyeler"} & set(d))
+            if d["tur"] != "proje":
+                self.assertFalse({"son", "sonGun"} & set(d))
         self.assertNotIn("Bozuk Not", kimlikler)
         self.assertEqual(self.dugum(veri, "Bahçe")["durum"], "bitti")  # bu hafta ilerledi
         self.assertEqual(self.dugum(veri, "Kitap Kulübü")["durum"], "surekli")
@@ -405,6 +407,26 @@ class TestUstSinir(GeciciKasa):
         projeler = [d for d in veri["dugumler"] if d["tur"] == "proje"]
         self.assertEqual(len(projeler), 65)
         self.assertTrue(any("sınırı aşıldı" in u for u in uyarilar))
+
+
+class TestSon(GeciciKasa):
+    def test_son_ve_songun(self):
+        veri = uret.uret(ORNEK, BUGUN)
+        b = self.dugum(veri, "Bahçe")
+        self.assertEqual(b["son"], {"tarih": "2026-11-15", "metin": "Saksılar alındı"})
+        self.assertEqual(b["sonGun"], 1)
+        self.assertNotIn("son", self.dugum(veri, "Kitap Kulübü"))
+        self.assertNotIn("sonGun", self.dugum(veri, "Kitap Kulübü"))
+
+    def test_hassas_projede_son_metni_yok(self):
+        self.yaz("20 Projeler/Birikim.md", "---\ndurum: aktif\n---\n# Birikim\n\n## Günlük\n- 2026-11-14: 4321 TL ayrıldı\n")
+        para = (self.kok / "30 Alanlar/Para.md").read_text(encoding="utf-8")
+        self.yaz("30 Alanlar/Para.md", para + "\n## Projeler\n- [[Birikim]]\n")  # Para örnek kasada hassas
+        veri = uret.uret(self.kok, BUGUN)
+        d = next(d for d in veri["dugumler"] if d["tur"] == "proje" and d["alan"] == "Para")
+        self.assertEqual(d["son"], {"tarih": "2026-11-14"})
+        self.assertEqual(d["sonGun"], 2)
+        self.assertNotIn("4321", json.dumps(veri, ensure_ascii=False))
 
 
 class TestKucukDuzeltmeler(GeciciKasa):
