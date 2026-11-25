@@ -1,0 +1,136 @@
+/* Kafamın İçi — gece gökyüzü görünüşü.
+   Renkler: alan renkleri veriden gelir ve her öğeye --alan olarak verilir. */
+:root{
+  --gece:#04060f; --yazi:#e8ecff; --soluk:#8f9bc7; --altin:#f4c86a;
+  --kart:#141731; --kart-kenar:rgba(255,255,255,.08);
+  --yesil:#7dffb2; --turuncu:#ff9f7a;
+  --egri:cubic-bezier(.23,1,.32,1);
+}
+*{box-sizing:border-box}
+html{background:var(--gece)}
+body{
+  margin:0; min-height:100vh; color:var(--yazi);
+  font:15px/1.45 "DM Sans",system-ui,-apple-system,sans-serif;
+  background:
+    radial-gradient(ellipse 120% 60% at 70% -10%, #2a2360 0%, transparent 60%),
+    var(--gece);
+  -webkit-font-smoothing:antialiased;
+}
+/* sabit, seyrek yıldızlar (kıpırdamaz) */
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.55;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, #fff, transparent), radial-gradient(1px 1px at 82% 9%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 64% 34%, #ffe9c4, transparent), radial-gradient(1px 1px at 28% 52%, #dfe6ff, transparent),
+    radial-gradient(1px 1px at 91% 61%, #fff, transparent), radial-gradient(1.6px 1.6px at 40% 83%, #f4c86a, transparent),
+    radial-gradient(1px 1px at 7% 74%, #fff, transparent), radial-gradient(1px 1px at 72% 92%, #c9d6ff, transparent);
+}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+button:focus-visible{outline:2px solid var(--altin);outline-offset:2px;border-radius:6px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- üst şerit ---------- */
+.ust{position:relative;z-index:1;display:flex;align-items:baseline;gap:12px;max-width:720px;margin:0 auto;
+  padding:calc(18px + env(safe-area-inset-top)) 16px 8px}
+.ust h1{font:300 26px/1.1 Fraunces,serif;margin:0;letter-spacing:.01em}
+.ust h1 b{font-weight:600;color:var(--altin)}
+.ust .tarih{color:var(--soluk);font-size:13px;margin-left:auto}
+.ust .kilitle{font-size:13px;color:var(--soluk);border:1px solid var(--kart-kenar);border-radius:999px;padding:4px 10px}
+
+main{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:0 16px calc(40px + env(safe-area-inset-bottom))}
+
+/* ---------- 1. katman: özet ---------- */
+.ozet{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 18px}
+.ozet button{background:rgba(255,255,255,.045);border:1px solid var(--kart-kenar);border-radius:12px;padding:10px 12px;
+  display:flex;flex-direction:column;gap:2px;min-width:0;transition:border-color .2s,background .2s}
+.ozet button[aria-pressed="true"]{border-color:var(--altin);background:rgba(244,200,106,.08)}
+.ozet .sayi{font:600 24px/1 "DM Sans",sans-serif}
+.ozet .ad{font-size:12px;color:var(--soluk);line-height:1.25}
+.ozet .calisilan .sayi{color:var(--yesil)}
+.ozet .bekleyen .sayi{color:var(--turuncu)}
+
+/* ---------- 2. katman: takıldığım yerler ---------- */
+.baslik-kucuk{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin:0 0 8px}
+.takildigim{margin-bottom:22px}
+.takildigim .baslik-kucuk{color:var(--altin)}
+.cipler{display:flex;flex-wrap:wrap;gap:6px}
+.desen{border:1px solid rgba(244,200,106,.6);color:var(--altin);border-radius:999px;padding:5px 12px;font-size:13px;
+  box-shadow:0 0 12px rgba(244,200,106,.12)}
+.desen .n{opacity:.75;margin-left:6px}
+
+/* ---------- 3. katman: pano ---------- */
+.alan{margin-bottom:22px}
+.alan > h2{color:var(--alan);font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  margin:0 0 8px;padding-top:8px;border-top:1px solid color-mix(in srgb, var(--alan) 35%, transparent)}
+.sutunlar{display:grid;grid-template-columns:54px 104px minmax(0,1fr) auto;gap:8px;font-size:12px;font-weight:700;
+  letter-spacing:.06em;color:var(--soluk);margin:0 0 6px;text-transform:uppercase}
+.satir{display:flex;align-items:center;gap:8px;margin:6px 0}
+.satir .ana{flex:1;min-width:0;display:grid;grid-template-columns:54px 104px minmax(0,1fr);gap:8px;align-items:center}
+.yap{font-size:12px;font-weight:600;white-space:nowrap;color:var(--yesil);border-radius:6px;padding:4px 0;text-align:center;
+  background:rgba(125,255,178,calc(.22 * var(--taze,0)));opacity:calc(.4 + .6 * var(--taze,0))}
+.yap:empty{background:none}
+.proje{position:relative;background:var(--kart);border:1px solid var(--alan);border-radius:7px;padding:5px 9px;
+  font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  box-shadow:0 0 10px color-mix(in srgb, var(--alan) 22%, transparent)}
+.proje.iki{padding-right:14px}
+.proje.iki::after{content:"";position:absolute;right:0;top:0;bottom:0;width:5px;background:var(--alan2)}
+.sonraki{color:#c9c7e6;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sonraki.gizli{color:var(--soluk)}
+.fikir{flex:none;max-width:110px;border:1px solid var(--alan);border-radius:999px;padding:4px 10px;font-size:12px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.isler{margin:-2px 0 8px 62px;display:flex;flex-wrap:wrap;gap:4px 12px}
+.is{font-size:13px;color:var(--turuncu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.is.unutulmus{opacity:.55}
+.is .gun{color:var(--soluk);margin-left:4px}
+.fazla{font-size:12px;color:var(--soluk)}
+.liste{margin:10px 0 4px;display:flex;flex-direction:column;gap:4px}
+.liste .baslik-kucuk{color:var(--soluk);margin:4px 0 2px}
+.yapilan{font-size:13px;color:var(--yesil);opacity:.85}
+.alan .cipler{margin-top:10px}
+.cip{border:1px solid color-mix(in srgb, var(--alan) 60%, transparent);border-radius:999px;padding:3px 10px;font-size:12px;color:#d7d9f2}
+.bos{color:var(--soluk);font-size:14px;margin:30px 0;text-align:center}
+
+/* Telefon: "sıradaki" adım proje adının altına, tam genişlikte iner (yan yana sığmıyor) */
+@media (max-width:560px){
+  .sutunlar{grid-template-columns:54px minmax(0,1fr) auto}
+  .sutunlar span:nth-child(3){display:none}
+  .sutunlar span:nth-child(2)::after{content:" · sıradaki"}
+  .satir .ana{grid-template-columns:54px minmax(0,1fr);row-gap:3px}
+  .satir .ana .yap{grid-row:1 / span 2;align-self:start}
+  .proje{justify-self:start;max-width:100%}
+  .sonraki{grid-column:2;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .fikir{align-self:flex-start;margin-top:2px}
+}
+/* Çok dar ekran: fikir çipi satırın altına iner */
+@media (max-width:360px){
+  .satir{flex-wrap:wrap}
+  .fikir{margin-left:62px}
+}
+
+/* ---------- kilit ekranı (önceki sürümden aynen) ---------- */
+#kilit{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px;background:var(--gece);transition:opacity .6s}
+#kilit[hidden]{display:none}
+#kilit.gitti{opacity:0;pointer-events:none}
+#kilit .gok{position:absolute;inset:-40px;filter:blur(14px);opacity:.9;
+  background:
+    radial-gradient(circle at 22% 30%, rgba(169,139,255,.35), transparent 38%),
+    radial-gradient(circle at 78% 24%, rgba(95,212,255,.28), transparent 36%),
+    radial-gradient(circle at 70% 76%, rgba(255,159,122,.24), transparent 40%),
+    radial-gradient(circle at 26% 78%, rgba(125,255,178,.22), transparent 36%),
+    radial-gradient(1.6px 1.6px at 12% 18%, #fff, transparent), radial-gradient(1.8px 1.8px at 44% 62%, #dfe6ff, transparent),
+    radial-gradient(1.4px 1.4px at 61% 14%, #ffe9c4, transparent), radial-gradient(2px 2px at 88% 52%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 34% 90%, #c9d6ff, transparent), radial-gradient(1.8px 1.8px at 92% 88%, #ffd2e8, transparent)}
+#kilit form{position:relative;display:flex;flex-direction:column;gap:12px;width:min(320px,100%);text-align:center}
+#kilit h2{font-family:Fraunces,serif;font-weight:300;font-size:34px;margin:0 0 6px;text-shadow:0 0 24px rgba(244,200,106,.25)}
+#kilit h2 b{font-weight:600;color:var(--altin)}
+#kilit input{font:inherit;font-size:16px;color:var(--yazi);background:rgba(14,20,48,.7);border:1px solid rgba(255,255,255,.2);
+  border-radius:12px;padding:12px 14px;text-align:center;backdrop-filter:blur(6px)}
+#kilit input:focus{outline:2px solid var(--altin);outline-offset:1px}
+#kilit button{font-size:15px;font-weight:700;color:#1b1404;background:var(--altin);border-radius:12px;padding:12px;text-align:center}
+#kilit button:disabled{opacity:.6;cursor:wait}
+#kilitHata{min-height:20px;font-size:14px;color:#ff9f9f}
+.hata{position:fixed;inset:0;z-index:30;display:grid;place-items:center;text-align:center;padding:24px;color:var(--soluk)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}

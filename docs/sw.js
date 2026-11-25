@@ -1,31 +1,14 @@
 // Servis çalışanı: sayfayı çevrimdışı açar.
-// Kabuk (sayfa, kilit.js, three.js) önbelleğe alınır; veri önce ağdan, olmazsa son kopyadan gelir.
+// Kabuk (sayfa, stil, modüller, kilit.js) önbelleğe alınır; veri önce ağdan, olmazsa son kopyadan gelir.
 // Yerel dosyalar (sayfa, kilit.js, manifest, ikonlar) önce ağdan alınır, olmazsa önbellekten gelir;
 // bu yüzden içerik güncellemesi için SURUM artırmak GEREKMEZ. SURUM yalnız eski önbellekleri temizlemek içindir.
-const SURUM = "v1";
+const SURUM = "v2"; // v2: 3B harita yerine pano (three.js kalktı)
 const KABUK = "kafamin-kabuk-" + SURUM;
 const VERI = "kafamin-veri"; // sürümden bağımsız: sürüm değişince son veri kaybolmasın
 const VERI_DOSYASI = "veri.sifreli.json";
 
-const THREE = "https://cdn.jsdelivr.net/npm/three@0.160.0/";
-// Sayfa açılırken gerçekten istenen modüller (ağ denetçisinden çıkarıldı).
-const THREE_URLLERI = [
-  "build/three.module.js",
-  "examples/jsm/controls/OrbitControls.js",
-  "examples/jsm/postprocessing/EffectComposer.js",
-  "examples/jsm/postprocessing/RenderPass.js",
-  "examples/jsm/postprocessing/UnrealBloomPass.js",
-  "examples/jsm/postprocessing/OutputPass.js",
-  "examples/jsm/postprocessing/Pass.js",
-  "examples/jsm/postprocessing/ShaderPass.js",
-  "examples/jsm/postprocessing/MaskPass.js",
-  "examples/jsm/renderers/CSS2DRenderer.js",
-  "examples/jsm/shaders/CopyShader.js",
-  "examples/jsm/shaders/LuminosityHighPassShader.js",
-  "examples/jsm/shaders/OutputShader.js",
-].map((y) => THREE + y);
-
-const YEREL = ["./", "index.html", "kilit.js", "manifest.webmanifest", "ikon-180.png", "ikon-512.png"];
+const YEREL = ["./", "index.html", "stil.css", "kilit.js", "arayuz.js", "pano.js", "odak.js",
+  "manifest.webmanifest", "ikon-180.png", "ikon-512.png"];
 const FONT_SUNUCULARI = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
 self.addEventListener("install", (olay) => {
@@ -33,7 +16,6 @@ self.addEventListener("install", (olay) => {
     const onbellek = await caches.open(KABUK);
     // biri indirilemezse kurulum başarısız olur; yerel dosyalar HTTP önbelleğini atlayarak alınır
     await Promise.all(YEREL.map((y) => onbellek.add(new Request(y, { cache: "reload" }))));
-    await onbellek.addAll(THREE_URLLERI);
     // Yazı tipleri isteğe bağlı: ulaşılamazsa kurulumu bozma
     try {
       await onbellek.add("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=DM+Sans:wght@400;500;700&display=swap");
@@ -80,7 +62,7 @@ async function yerelGetir(istek, anahtar) {
   return fetch(istek);
 }
 
-// Diğerleri (three.js sabit sürüm, yazı tipleri): önce önbellek; yoksa ağdan al, yazı tipiyse sakla.
+// Diğerleri (yazı tipleri): önce önbellek; yoksa ağdan al, yazı tipiyse sakla.
 async function onbellekOnce(istek) {
   const bulunan = await caches.match(istek, { ignoreSearch: true });
   if (bulunan) return bulunan;
