@@ -134,3 +134,38 @@ class TarihYedekTesti(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSonGunluk(unittest.TestCase):
+    """Proje kartının `## Günlük` bölümündeki en üst tarihli satır."""
+
+    def test_iki_nokta_bicimi(self):
+        govde = "# P\n\n## Günlük\n- 2026-11-15: **Kalın** iş [[Bahçe]] yapıldı\n- 2026-11-10: eski\n"
+        self.assertEqual(kasa.son_gunluk_satiri(govde), (date(2026, 11, 15), "Kalın iş Bahçe yapıldı"))
+
+    def test_uzun_tire_bicimi(self):
+        self.assertEqual(kasa.son_gunluk_satiri("## Günlük\n- 2026-11-14 — tire ile\n"),
+                         (date(2026, 11, 14), "tire ile"))
+
+    def test_gunluk_yoksa_none(self):
+        self.assertIsNone(kasa.son_gunluk_satiri("# P\n\n**Amaç:** x\n"))
+
+    def test_bozuk_tarih_atlanir_sonraki_alinir(self):
+        self.assertEqual(kasa.son_gunluk_satiri("## Günlük\n- 2026-13-40: bozuk\n- 2026-11-01: iyi\n"),
+                         (date(2026, 11, 1), "iyi"))
+
+    def test_baska_bolumdeki_tarihli_satir_sayilmaz(self):
+        self.assertIsNone(kasa.son_gunluk_satiri("## Notlar\n- 2026-11-15: değil\n"))
+
+    def test_gunluk_bittikten_sonraki_bolum_sayilmaz(self):
+        self.assertIsNone(kasa.son_gunluk_satiri("## Günlük\nhenüz yok\n## Notlar\n- 2026-11-15: değil\n"))
+
+    def test_metin_120_karakter(self):
+        self.assertEqual(len(kasa.son_gunluk_satiri("## Günlük\n- 2026-11-15: " + "a" * 300 + "\n")[1]), 120)
+
+    def test_not_olusturda_son(self):
+        k = kasa.oku_kasa(ORNEK, BUGUN)
+        bahce = next(p for p in k.projeler if p.ad == "Bahçe")
+        self.assertEqual(bahce.son, (date(2026, 11, 15), "Saksılar alındı"))
+        kulup = next(p for p in k.projeler if p.ad == "Kitap Kulübü")
+        self.assertIsNone(kulup.son)

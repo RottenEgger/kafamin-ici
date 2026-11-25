@@ -11,3 +11,7 @@ sonraki_adim: Domates fidelerini dik
 **Kaldığım yer:** Saksılar alındı, toprak bekliyor.
 
 İlgili: [[Hayat]]
+
+## Günlük
+- 2026-11-15: Saksılar alındı
+- 2026-11-12: Balkon ölçüldü

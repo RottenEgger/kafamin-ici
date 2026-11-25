@@ -17,6 +17,9 @@ SON_GUN = 7  # "son 7 gün": bugün ve önceki 6 gün
 LINK = re.compile(r"\[\[([^\]|#]+)")
 MADDE = re.compile(r"^\s*- \[([ xX])\]\s*(.*)$")
 GUNLUK_AD = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
+# Proje kartındaki günlük satırı: "- 2026-11-25: ..." ya da "- 2026-11-25 — ..."
+GUNLUK_SATIRI = re.compile(r"^\s*- (\d{4}-\d{2}-\d{2})\s*(?::|—|–|-)\s*(.+)$")
+SON_SATIR_SINIRI = 120  # pano satırında gösterilecek en çok karakter
 
 
 @dataclass
@@ -36,6 +39,7 @@ class Not:
     sonraki: str
     durum: str
     tarih: date | None
+    son: tuple[date, str] | None = None  # `## Günlük` bölümündeki en üst satır (tarih, metin)
 
 
 @dataclass
@@ -98,6 +102,33 @@ def kimlik(metin: str) -> str:
     return "gorev:" + s[:40]
 
 
+def temiz_metin(metin: str) -> str:
+    """Obsidian işaretlerini atar: [[bağlantı]], **kalın**, ~~üstü çizili~~."""
+    metin = re.sub(r"\[\[[^\]|]*\|([^\]]*)\]\]", r"\1", metin)  # [[Hedef|Görünen]] -> Görünen
+    metin = re.sub(r"\[\[([^\]#|]*)#[^\]]*\]\]", r"\1", metin)  # [[Not#Başlık]] -> Not
+    for atilacak in ("[[", "]]", "**", "~~"):
+        metin = metin.replace(atilacak, "")
+    return " ".join(metin.split())
+
+
+def son_gunluk_satiri(govde: str) -> tuple[date, str] | None:
+    """`## Günlük` bölümündeki ilk geçerli tarihli satır: (tarih, sade metin). Yoksa None.
+
+    Kartlarda en yeni satır en üste yazılır; bu yüzden ilk geçerli satır en sonuncudur.
+    """
+    gunlukte = False
+    for satir in govde.splitlines():
+        if satir.startswith("#"):
+            gunlukte = "günlük" in kucuk_harf(satir)
+            continue
+        if not gunlukte:
+            continue
+        m = GUNLUK_SATIRI.match(satir)
+        if m and (gun := tarih_cozumle(m.group(1))) is not None:
+            return gun, temiz_metin(m.group(2))[:SON_SATIR_SINIRI]
+    return None
+
+
 def linkler(metin: str) -> list[str]:
     return [h.strip() for h in LINK.findall(metin)]
 
@@ -128,6 +159,7 @@ def not_olustur(yol: Path, fm: dict, govde: str) -> Not:
         sonraki=fm.get("sonraki_adim", ""),
         durum=fm.get("durum", ""),
         tarih=tarih,
+        son=son_gunluk_satiri(govde),
     )
 
 
